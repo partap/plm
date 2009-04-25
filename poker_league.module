@@ -1,0 +1,133 @@
+<?php
+
+function poker_league_menu() {
+  $items = array();
+  $items['league/%/%'] = array(
+    'title' => 'Game Details',
+    'title callback' => 'poker_league_title_callback',
+    'title arguments' => array(1, 2),
+    'page callback' => 'poker_league_mainpage',
+    'page arguments' => array(1,2),
+    'access arguments' => array('access league content'),
+    'description' => t('Poker League Manager'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['league/%'] = array(
+    'title' => 'Season',
+    'title callback' => 'poker_league_title_callback',
+    'title arguments' => array(1, NULL),
+    'page callback' => 'poker_league_games',
+    'page arguments' => array(1),
+    'access arguments' => array('access league content'),
+    'description' => t('Poker League Manager'),
+    'type' => MENU_NORMAL_ITEM,
+  );
+
+  $items['league'] = array(
+    'title' => 'Poker League',
+    //'title callback' => 'poker_league_title_callback',
+    'page callback' => 'poker_league_seasons',
+    //'page arguments' => array(NULL,NULL),
+    'access arguments' => array('access league content'),
+    'description' => t('Poker League Manager'),
+    'type' => MENU_NORMAL_ITEM,
+    //'#type' => MENU_CALLBACK,
+  );
+  return $items;
+}
+function poker_league_title_callback($cur_sid, $cur_gid) {
+  //$cur_sid = arg(1);
+  //$cur_gid = arg(2);
+  if (!$cur_sid) return 'Error';
+  if (!$cur_gid) return 'Season ' . $cur_sid;
+  return 'Game ' . $cur_gid;
+}
+
+function poker_league_perm() {
+  return array('access league content', 'administer league');
+}
+
+function poker_league_seasons() {
+  return '<p>poker_league_seasons()</p>' . poker_league_mainpage(null, null);
+}
+
+function poker_league_games($cur_sid) {
+  return '<p>poker_league_games()</p>' . poker_league_mainpage($cur_sid, null);
+}
+
+function poker_league_mainpage($cur_sid, $cur_gid) {
+  /*   return drupal_get_form('poker_league_mainform'); */
+  /* } */
+  
+  /* function poker_league_mainform($form_state) { */
+  $str = '';
+  //$str .= '<p>arg(0)=' . arg(0) . '</p>';
+  //$str .= '<p>arg(1)=' . arg(1) . '</p>';
+  //$str .= '<p>arg(2)=' . arg(2) . '</p>';
+  
+  //$cur_sid   = arg(1);
+  //$cur_gid   = arg(2);
+  
+  //$str .= '<p>cur_sid=' . $cur_sid . '</p>';
+  //$str .= '<p>cur_gid=' . $cur_gid . '</p>';
+  
+  //$str .= '<p>'.'Hello League'.'</p>';
+  // use our test db here
+  //$std_db = db_set_active('pgsql://drupal:lapurd@localhost/league');
+  $qry = "SELECT sid, ymdstart, ymdend, name from {plm_seasons}
+          ORDER BY ymdstart,ymdend;";
+  $seasons = db_query($qry);
+  //$str .= "<h3>Seasons</h3>\n";
+  
+  $str .= "<ul>";
+  //$str .= "<ul style=\"padding-left: 40px; border: solid 1px black;\">\n";
+  while ($season = db_fetch_object($seasons)){
+    $str .= "<li>" 
+      . '<a href="/league/' . $season->sid . '/">'
+      . $season->name 
+      ."</a></li>"; 
+    $sid = $season->sid;
+    if ($cur_sid == $sid){
+      // Show game summaries for current season
+      $qry = "SELECT g.gid, g.ymd, g.name, g.numplayers, p.name as host, g.finished  
+            FROM {plm_games} g
+            LEFT JOIN {plm_players} p
+            ON g.hostid=p.pid
+            WHERE sid=$sid
+            ORDER BY ymd;";
+      $games = db_query($qry);
+      $str .= "<ul style=\"padding-left: 40px; background-color: #eee; \">\n";
+      while( $game = db_fetch_object($games)){
+        $gid = $game->gid;
+        $finished = $game->finished;
+        $str .= "<li><div>" 
+          . "<a href =\"/league/$cur_sid/$gid/\">"
+          . $game->ymd . " " . $game->name . "</a> "
+          . "Host: " . $game->host . ", " . $game->numplayers . " players<br/>";
+        
+        if ($cur_gid == $gid){
+          if ($finished)
+            $str .= '<div style=" background-color: #ffffee;"><h4>Results</h4>';
+          // Show game details in current game
+          $qry = "SELECT r.place AS place, p.name AS name 
+            FROM {plm_gameresults} r
+            LEFT JOIN {plm_players} p
+            ON r.pid=p.pid
+            WHERE r.gid=$gid 
+            ORDER BY place;";
+          $results = db_query($qry);
+          $str .= "<ul style=\"padding-left: 40px;\">\n";
+          while( $result = db_fetch_object($results)){
+            $str .= "<li>" . $result->place . ") " . $result->name . "</li>";
+          }
+          $str .= "</ul></div>\n";
+        }
+        $str .= "</div></li>";
+      }
+      $str .= "</ul>\n";
+    }
+  }
+  $str .= "</ul>\n";
+  return $str;
+}
