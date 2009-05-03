@@ -1,133 +1,994 @@
 <?php
+// Include helper tools
+require_once drupal_get_path('module', 'poker_league') .'/poker_league.inc';
+require_once drupal_get_path('module', 'poker_league') .'/poker_league_db.inc';
 
 function poker_league_menu() {
   $items = array();
-  $items['league/%/%'] = array(
-    'title' => 'Game Details',
-    'title callback' => 'poker_league_title_callback',
-    'title arguments' => array(1, 2),
-    'page callback' => 'poker_league_mainpage',
-    'page arguments' => array(1,2),
-    'access arguments' => array('access league content'),
-    'description' => t('Poker League Manager'),
-    'type' => MENU_NORMAL_ITEM,
-  );
-
-  $items['league/%'] = array(
-    'title' => 'Season',
-    'title callback' => 'poker_league_title_callback',
-    'title arguments' => array(1, NULL),
-    'page callback' => 'poker_league_games',
-    'page arguments' => array(1),
-    'access arguments' => array('access league content'),
-    'description' => t('Poker League Manager'),
-    'type' => MENU_NORMAL_ITEM,
-  );
 
   $items['league'] = array(
     'title' => 'Poker League',
-    //'title callback' => 'poker_league_title_callback',
-    'page callback' => 'poker_league_seasons',
-    //'page arguments' => array(NULL,NULL),
-    'access arguments' => array('access league content'),
-    'description' => t('Poker League Manager'),
+    'page callback' => 'poker_league_current_series',
+    'access arguments' => array('access poker league content'),
+    'description' => t('Poker League'),
     'type' => MENU_NORMAL_ITEM,
-    //'#type' => MENU_CALLBACK,
   );
+  $items['league/series/%node/newgame'] = array(
+    'title' => 'New Game',
+    'description' => 'Set up a new game',
+    'page callback' => 'poker_league_newgame',
+    'page arguments' => array(2),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['league/series'] = array(
+    'title' => t('Series'),
+    'description' => 'Browse Series/Seasons',
+    'page callback' => 'poker_league_series',
+    'page arguments' => array(NULL),
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['league/series/%node'] = array(
+    'title' => t('Series'),
+    'description' => 'View a poker series/season',
+    'page callback' => 'poker_league_series',
+    'page arguments' => array(2),
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['league/series/%node/standings'] = array(
+    'title' => t('Series'),
+    'description' => 'View the current standings for this series.',
+    'page callback' => 'poker_league_series',
+    'page arguments' => array(2),
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['league/game/%node'] = array(
+    'title' => t('Game'),
+    'description' => 'View the details of a poker game',
+    'page callback' => 'poker_league_game',
+    'page arguments' => array(2),
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['league/players'] = array(
+    'title' => t('Players'),
+    'description' => 'Browse Players',
+    'page callback' => 'poker_players_page',
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['league/player/create'] = array(
+    'title' => t('Add Player'),
+    'description' => 'Add a New Player',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('poker_player_create_form'),
+    //'page callback' => 'poker_player_create_page',
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['league/player/%poker_player/delete'] = array(
+    'title' => t('Delete Player'),
+    'description' => 'Delete player from the roster',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('poker_player_confirm_delete', 2),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['league/player/%poker_player/edit'] = array(
+    'title' => t('Edit Player'),
+    'description' => 'Edit player details',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('poker_player_edit', 2),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['league/result/%/%/edit'] = array(
+    'title' => t('Edit Result'),
+    'description' => 'Edit result',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('poker_result_edit', 2,3),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_CALLBACK,
+  );
+  $items['league/player/%poker_player'] = array(
+    'title' => t('Player'),
+    'description' => 'Show player details',
+    'page callback' => 'poker_player_view',
+    'page arguments' => array(2),
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+  );
+  
   return $items;
-}
-function poker_league_title_callback($cur_sid, $cur_gid) {
-  //$cur_sid = arg(1);
-  //$cur_gid = arg(2);
-  if (!$cur_sid) return 'Error';
-  if (!$cur_gid) return 'Season ' . $cur_sid;
-  return 'Game ' . $cur_gid;
-}
+  }
 
 function poker_league_perm() {
-  return array('access league content', 'administer league');
+  return array('access poker league content', 'administer poker league');
+}
+
+// implementation of hook_access()
+function poker_league_access($op, $node, $account) {
+  if ($op == 'create' || $op == 'update' || $op == 'delete') {
+    return user_access('administer poker league', $account);
+  }
+  if ($op == 'view') {
+    if (user_access('access poker league content', $account) )
+      return TRUE;
+  }
+  return FALSE;
+}
+
+function poker_game_access($op, $node, $account) {
+  if ($op == 'create' || $op == 'update' || $op == 'delete') {
+    return user_access('administer poker league', $account);
+  }
+  if ($op == 'view') {
+    if (user_access('access poker league content', $account) )
+      return TRUE;
+  }
+  return FALSE;
+}
+
+function poker_player_load($pid) {
+  return _get_poker_player($pid);
+  $sql = "SELECT * from {poker_league_players} WHERE pid=%d";
+  return db_fetch_object(db_query($sql, $pid));
+}
+
+function poker_players_page() {
+  $output = '';
+  drupal_set_title("Poker Players");
+
+  $num_players = _get_num_players();
+  $output .= format_plural($num_players, '1 Player', '@count Players');
+
+  $header = array(
+    array('data' => t('Name'), 'field' => 'name'),
+  );
+  if (user_access('administer poker league')) {
+
+  }
+  $sql = "SELECT pid, uid, name FROM {poker_league_players} " 
+    . tablesort_sql($header);
+  $result = db_query($sql);
+  //$output .= "<ul>\n";
+  $rows = array();
+
+  while ($row = db_fetch_object($result)){
+    $rowdata = array(l(t($row->name), 'league/player/' . $row->pid));
+    if (user_access('administer poker league')) {
+      $rowdata[] = l(t('edit'), 'league/player/' . $row->pid . '/edit');
+      $rowdata[] = l(t('delete'), 'league/player/' . $row->pid . '/delete');
+    }
+    $rows[] = $rowdata;
+  }
+  return $output . theme('table', $header, $rows);
+}
+
+function poker_player_create_page(){
+  return drupal_get_form('poker_player_create_form');
+}
+
+function poker_player_create_form($form_state) {
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Player Name',
+    '#default_value' => '',
+    '#required' => TRUE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+    //'#validate' => array('poker_player_create_form_validate'),
+  );
+  return $form;
+}
+function poker_player_create_form_validate($form, &$form_state) {
+  $name = trim($form_state['values']['name']);
+  //form_set_value($form['name'], $name, $form_state);
+  $form_state['values']['name'] = $name;
+  if (strlen($name) == 0) form_set_error('name',
+                                         'Player Name is required');
+  $sql = "SELECT name FROM {poker_league_players}
+            WHERE lower(name)=lower('%s')";
+  $in_table = db_result(db_query($sql, $name));
+  if ($in_table) 
+    form_set_error(
+      'name', t("There is already a player called <i>@name</i>.", 
+        array('@name' => $name)));
+}
+function poker_player_create_form_submit($form, &$form_state) {
+  $name = trim($form_state['values']['name']);
+  $sql = "INSERT INTO {poker_league_players} (name) VALUES ('%s')";
+  db_query($sql, $name);
+  drupal_set_message(
+    t("Added player <i>@name</i>.", array('@name' => $name)));
+  $form_state['redirect'] = 'league/players';
+
+}
+function poker_player_edit(&$form_state, $player) {
+  $form['_player'] = array('#type' => 'value', '#value' => $player);
+  
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => 'P
+layer Name',
+    '#default_value' => $player->name,
+    '#required' => TRUE,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+  );
+  return $form;  
+}
+function poker_player_edit_validate($form, &$form_state) {
+  $name = trim($form_state['values']['name']);
+  $pid  = $form_state['values']['_player']->pid;
+  
+  if (strlen($name) == 0) 
+    form_set_error('name', 'Player Name is required');
+  
+  $sql = "SELECT name FROM {poker_league_players}
+          WHERE lower(name)=lower('%s')
+          AND pid != %d";
+  $in_table = db_result(db_query($sql, $name, $pid));
+  if ($in_table) 
+    form_set_error(
+      'name', t("There is already a player called <i>@name</i>.", 
+                array('@name' => $name)));
+}
+function poker_player_edit_submit($form, &$form_state) {
+  $name = trim($form_state['values']['name']);
+  $pid  = $form_state['values']['_player']->pid;
+  $sql = "UPDATE {poker_league_players} SET name='%s'
+          WHERE pid=%d";
+  db_query($sql, $name, $pid);
+  drupal_set_message(
+    t("Edited player <i>@name</i>.", array('@name' => $name)));
+  $form_state['redirect'] = 'league/player/' . $pid;
+
+}
+
+
+function poker_player_confirm_delete(&$form_state, $player) {
+  $form['_player'] = array('#type' => 'value', '#value' => $player);
+
+  return confirm_form(
+    $form,
+    t('Are you sure you want to delete the player %name?', 
+      array('%name' => $player->name)),
+    'league/player/'. $player->pid,
+    t('All game results for this player will be deleted. '
+      . 'This action cannot be undone.'),
+    t('Delete'), t('Cancel'));
+}
+function poker_player_confirm_delete_submit($form, &$form_state) {
+  $player = $form_state['values']['_player'];
+  poker_player_delete($player->pid);
+  drupal_set_message(t("The player <i>@name</i> has been deleted.", 
+                       array('@name' => $player->name)));
+  $form_state['redirect'] = 'league/players';
+}
+function poker_player_delete($pid) {
+    $sql = "DELETE FROM {poker_league_players} where pid=%d";
+    db_query($sql, $pid);
+}
+function poker_player_view($player) {
+  drupal_set_title($player->name);
+  $output = "<p>Details of $player->name</p>\n";
+  return $output;
+}
+
+/**
+ * Implementation of hook_nodeapi().
+ *
+ * When a node revision is deleted, we need to remove the corresponding record
+ * from our table. The only way to handle revision deletion is by implementing
+ * hook_nodeapi().
+ */
+function poker_league_nodeapi(&$node, $op, $teaser, $page) {
+  if ($op == 'delete revision') {
+    // Notice that we're matching a single revision based on the node's vid.
+    db_query('DELETE FROM {poker_league} WHERE vid = %d', $node->vid);
+  }
+}
+
+/**
+ * Implementation of hook_node_info().
+ *
+ * This function registers the provided node types. Currently,
+ * this is "poker_league" and "poker_league_game".
+ */
+function poker_league_node_info() {
+  return array(
+    'poker_league'     => array(
+      'name'           => t('Poker League Series'),
+      'module'         => 'poker_league',
+      'description'    => t('Info about an entire poker series/season.'),
+      'has_title'      => TRUE,
+      'has_body' => FALSE,
+      //'body_label'     => t('Series Notes'),
+      'min_word_count' => 0,
+    ),
+    
+    'poker_league_game' => array(
+      'name'        => t('Poker League Game'),
+      'module'      => 'poker_game',
+      'description' => t('Info about a single game.'),
+      'has_title'   => TRUE,
+      'has_body' => FALSE,
+      //'body_label'  => t('Game Summary'),
+      'min_word_count' => 0,
+    ),
+  );
+}
+
+function poker_league_insert($node) {
+  $start_dt = strtotime($node->start_date);
+  $end_dt = 'NULL';
+  if ($node->end_date) $end_dt = strtotime($node->end_date);
+  db_query("INSERT INTO {poker_league} (nid, vid, start_date, end_date) 
+            VALUES (%d, %d, %d, %d)", 
+           $node->nid, $node->vid, $start_dt, $end_dt);
+}
+function poker_league_delete($node) {
+  db_query("DELETE FROM {poker_league_game} where sid=%d", $node->nid);
+  db_query("DELETE FROM {poker_league} where nid=%d", $node->nid);
+}
+
+function poker_league_update($node) {
+  // if this is a new node or we're adding a new revision,
+  if ($node->revision) {
+    poker_league_insert($node);
+  }
+  else {
+    $start_dt = strtotime($node->start_date);
+    $end_dt = 'NULL';
+    if ($node->end_date) $end_dt = strtotime($node->end_date);
+    db_query("UPDATE {poker_league} 
+              SET start_date=%d, 
+                  end_date= %d 
+              WHERE nid = %d", 
+             $start_dt, $end_dt, $node->nid);
+  }
+}
+function poker_league_load($node) {
+  $additions = db_fetch_object(
+    db_query(
+      "SELECT start_date, end_date FROM {poker_league} WHERE nid=%d",
+      $node->nid));
+  
+  return $additions;
+  
+}
+function poker_league_view($node, $teaser = FALSE, $page = FALSE) {
+  $node = node_prepare($node, $teaser);
+
+  $node->content['poker_league_series'] = array(
+    '#value' => theme('poker_league_series', $node),
+    '#weight' => -10,
+  );
+
+  
+  return $node;
+}
+
+/**
+ * Implementation of hook_theme().
+ */
+function poker_league_theme() {
+  return array(
+    // Custom theme function
+    'poker_league_series' => array(
+      'arguments' => array('node' => NULL),
+    ),
+    'poker_league_date_range' => array(
+      'arguments' => array('node' => NULL),
+    ),
+    'poker_league_game_list' => array(
+      'arguments' => array('node' => NULL),
+    ),
+    
+  );
+}
+function theme_poker_league_series($node) {
+  //$output .= t("<p>theme_poker_league_series()</p>");
+  $output .= theme('poker_league_date_range', $node);
+  $output .= theme('poker_league_game_list', $node);
+  return $output;
+}
+
+function theme_poker_league_date_range($node) {
+  //$output = '<div class="poker_league_date_range">';
+  $label = 'Starts';
+  $now = gmmktime();
+  if ($node->start_date < $now) $label = 'Started';
+  $datestr = date('m-d-Y', $node->start_date);
+  $output .= t(
+    '<div>@label: @datestr</div>', array(
+      '@label' => $label, 
+      '@datestr' => $datestr,
+    )
+  );
+  if ($node->end_date == 0) return $output;
+  
+  $label = 'Ends';
+  if ($node->end_date < $now) $label = 'Ended';
+  $datestr = date('m-d-Y', $node->end_date);
+  $output .= t(
+    '<div>@label: @datestr</div>',
+    array(
+      '@label' => $label, 
+      '@datestr' => $datestr));
+  return $output;// . "</div>";
+}
+
+function theme_poker_league_game_list($node) {
+  $label = 'Games';
+  $num_games = 0;
+  $sql = "SELECT count(*) as num_games from  {node} n 
+          LEFT JOIN {poker_league_game} g ON g.nid=n.nid AND g.vid=n.vid 
+          WHERE sid=%d";
+  $result = db_query($sql, $node->nid);
+  if ($row = db_fetch_object($result)){
+    $num_games = $row->num_games;
+  }
+  $output = "<div class=\"poker_league_game_list\">";
+  $output .= "<div class=\"num_games\">$label: $num_games</div>";
+  if ($num_games == 0) return $output . '</div>';
+  $sql = "SELECT n.title, p.name as host, g.game_date, n.nid 
+          FROM  {node} n 
+          LEFT JOIN {poker_league_game} g ON g.nid=n.nid AND g.vid=n.vid
+          LEFT JOIN {poker_league_players} p ON p.pid=g.hid 
+          WHERE g.sid=%d";
+  $result = db_query($sql, $node->nid);
+  $list = array();
+  while ($row = db_fetch_object($result)){
+    $date_str = date("m-d-Y", $row->game_date);
+    //$output .= '<li>';
+    if (!$row->host) $row->host = 'TBA';
+    //$list[] = l(t($row->title), 
+    //            "league/game/$row->nid")
+    $list[] = l(t($row->title), 
+                "node/$row->nid")
+      ." $date_str  Host:$row->host";
+  }
+  $output .= theme('item_list', $list);
+  $output .= "</div>\n";
+  return $output;
+}
+function poker_league_form(&$node) {
+  // The site admin can decide if this node type has a title and body, and how
+  // the fields should be labeled. We need to load these settings so we can
+  // build the node form correctly.
+  $type = node_get_types('type', $node);
+  
+  if ($type->has_title) {
+    $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => check_plain($type->title_label),
+      '#required' => TRUE,
+      '#default_value' => $node->title,
+      '#weight' => -5
+    );
+  }
+  
+  if ($type->has_body) {
+    // In Drupal 6, we can use node_body_field() to get the body and filter
+    // elements. This replaces the old textarea + filter_form() method of
+    // setting this up. It will also ensure the teaser splitter gets set up
+    // properly.
+    $form['body_field'] = node_body_field($node, $type->body_label, 
+                                          $type->min_word_count);
+  }
+  $start_date = $node->start_date;
+  if (!$start_date)
+    $start_date = gmmktime();
+  // Now we define the form elements specific to our node type.
+  $format = 'm-d-Y';
+  //$format = 'Y-m-d 00:00:00';
+  $form['start_date'] = array(
+    '#type'          => 'date_popup',
+    '#title'         => t('Start Date'),
+    '#required'      => TRUE,
+    '#date_format' => $format,
+    '#default_value' => date('Y-m-d H:i:s', $start_date),
+  );
+    
+    
+  $form['end_date'] = array(
+    '#type'          => 'date_popup',
+    '#title'         => t('End Date'),
+    '#required'      => FALSE,
+    '#date_format' => $format,
+  );
+  $end_date = $node->end_date;
+  if ($end_date)
+    $form['end_date']['#default_value'] = date('Y-m-d H:i:s', $end_date);
+  return $form;
+}
+
+function poker_league_validate(&$node) {
+  form_set_error(NULL,'Yow!');
+}
+
+
+/**
+ * Implementation of hook_link().
+ */
+function poker_league_link($type, $node = NULL, $teaser = FALSE) {
+  global $user;
+  
+  $links = array();
+  if ($type == 'node' and $node->type == 'poker_league'
+      and user_access('administer poker league')) {
+    $links['poker_league_newgame'] = array(
+      'title' => 'New Game',
+      'href'  => "node/add/poker-league-game/$node->nid",
+      //'href'  => "league/series/$node->nid/newgame"
+    );
+  }
+  return $links;
+}
+
+function poker_league_current_series() {
+  // Select newest active series by default
+  $sql = "SELECT n.nid FROM {node} AS n
+    LEFT JOIN {poker_league} AS pl ON n.vid=pl.vid
+    WHERE n.type='poker_league' AND pl.end_date >= %d
+    ORDER BY pl.end_date DESC, pl.start_date DESC LIMIT 1";
+  $sid = db_result(db_query($sql, gmmktime()));
+  $node = $sid ? node_load(array('nid' => $sid)) : NULL;
+  return poker_league_series($node);
+  
+}
+function poker_league_series($node) {
+  $output = '';
+  //$output = "<p>poker_league_series(\$node=$node)</p>";
+  if ($node && !strcmp($node->type,'poker_league')){
+    $output .= node_view($node);
+    return $output;
+  }
+  $sql = "
+    SELECT n.nid FROM {node} AS n
+    LEFT JOIN {poker_league} AS pl ON n.vid=pl.vid
+    WHERE n.type='poker_league'
+    ORDER BY pl.end_date DESC, pl.start_date DESC";
+  $result = pager_query(db_rewrite_sql($sql), 10);
+  while ($node = db_fetch_object($result)) {
+    $output .= node_view(node_load($node->nid),1);
+  }
+  $output .= theme('pager', NULL, 10);
+  return $output;
 }
 
 function poker_league_seasons() {
   return '<p>poker_league_seasons()</p>' . poker_league_mainpage(null, null);
 }
 
-function poker_league_games($cur_sid) {
-  return '<p>poker_league_games()</p>' . poker_league_mainpage($cur_sid, null);
+function poker_league_game($node) {
+  if ($node && !strcmp($node->type,'poker_league_game')){
+    //$output .= "<p>poker_league_game($node->nid)</p>";
+    $output .= node_view($node);
+    return $output;
+  }
 }
 
-function poker_league_mainpage($cur_sid, $cur_gid) {
-  /*   return drupal_get_form('poker_league_mainform'); */
-  /* } */
-  
-  /* function poker_league_mainform($form_state) { */
-  $str = '';
-  //$str .= '<p>arg(0)=' . arg(0) . '</p>';
-  //$str .= '<p>arg(1)=' . arg(1) . '</p>';
-  //$str .= '<p>arg(2)=' . arg(2) . '</p>';
-  
-  //$cur_sid   = arg(1);
-  //$cur_gid   = arg(2);
-  
-  //$str .= '<p>cur_sid=' . $cur_sid . '</p>';
-  //$str .= '<p>cur_gid=' . $cur_gid . '</p>';
-  
-  //$str .= '<p>'.'Hello League'.'</p>';
-  // use our test db here
-  //$std_db = db_set_active('pgsql://drupal:lapurd@localhost/league');
-  $qry = "SELECT sid, ymdstart, ymdend, name from {plm_seasons}
-          ORDER BY ymdstart,ymdend;";
-  $seasons = db_query($qry);
-  //$str .= "<h3>Seasons</h3>\n";
-  
-  $str .= "<ul>";
-  //$str .= "<ul style=\"padding-left: 40px; border: solid 1px black;\">\n";
-  while ($season = db_fetch_object($seasons)){
-    $str .= "<li>" 
-      . '<a href="/league/' . $season->sid . '/">'
-      . $season->name 
-      ."</a></li>"; 
-    $sid = $season->sid;
-    if ($cur_sid == $sid){
-      // Show game summaries for current season
-      $qry = "SELECT g.gid, g.ymd, g.name, g.numplayers, p.name as host, g.finished  
-            FROM {plm_games} g
-            LEFT JOIN {plm_players} p
-            ON g.hostid=p.pid
-            WHERE sid=$sid
-            ORDER BY ymd;";
-      $games = db_query($qry);
-      $str .= "<ul style=\"padding-left: 40px; background-color: #eee; \">\n";
-      while( $game = db_fetch_object($games)){
-        $gid = $game->gid;
-        $finished = $game->finished;
-        $str .= "<li><div>" 
-          . "<a href =\"/league/$cur_sid/$gid/\">"
-          . $game->ymd . " " . $game->name . "</a> "
-          . "Host: " . $game->host . ", " . $game->numplayers . " players<br/>";
-        
-        if ($cur_gid == $gid){
-          if ($finished)
-            $str .= '<div style=" background-color: #ffffee;"><h4>Results</h4>';
-          // Show game details in current game
-          $qry = "SELECT r.place AS place, p.name AS name 
-            FROM {plm_gameresults} r
-            LEFT JOIN {plm_players} p
-            ON r.pid=p.pid
-            WHERE r.gid=$gid 
-            ORDER BY place;";
-          $results = db_query($qry);
-          $str .= "<ul style=\"padding-left: 40px;\">\n";
-          while( $result = db_fetch_object($results)){
-            $str .= "<li>" . $result->place . ") " . $result->name . "</li>";
-          }
-          $str .= "</ul></div>\n";
-        }
-        $str .= "</div></li>";
-      }
-      $str .= "</ul>\n";
+
+function poker_game_form(&$node) {
+  // They say you're not supposed to do this, but I just want to see if 
+  // we passed an sid as an argument so we know which series this game will 
+  // be part of.
+  // eg: node/add/poker-league-game/32
+  $sid = arg(3);
+  if (!$node->sid) $node->sid = $sid;
+  if (!$node->buyin && !$node->pot_start) 
+    $node->buyin = _poker_rules_default_buyin($node->sid);
+
+  // The site admin can decide if this node type has a title and body, and how
+  // the fields should be labeled. We need to load these settings so we can
+  // build the node form correctly.
+  $type = node_get_types('type', $node);
+  if ($type->has_title) {
+    if (!$node->title) {
+      $series = node_load(array('nid' => $sid));
+      $node->title = $series->title 
+        . ': Game ' 
+        . (_count_games_in_series($node->sid)+1);
     }
+    $form['title'] = array(
+      '#type' => 'textfield',
+      '#title' => check_plain($type->title_label),
+      '#required' => TRUE,
+      '#default_value' => $node->title,
+      '#weight' => -5
+    );
   }
-  $str .= "</ul>\n";
-  return $str;
+
+  if ($type->has_body) {
+    // In Drupal 6, we can use node_body_field() to get the body and filter
+    // elements. This replaces the old textarea + filter_form() method of
+    // setting this up. It will also ensure the teaser splitter gets set up
+    // properly.
+    $form['body_field'] = node_body_field(
+      $node, $type->body_label, 
+      $type->min_word_count
+    );
+  }
+  // Now we define the form elements specific to our node type.
+
+  $game_date = $node->game_date;
+  if (!$game_date)
+    $game_date = gmmktime();
+  $format = 'm-d-Y';
+
+  $form['game_date'] = array(
+    '#type'          => 'date_popup',
+    '#title'         => t('Game Date'),
+    '#required'      => TRUE,
+    '#date_format' => $format,
+    '#default_value' => date('Y-m-d H:i:s', $game_date),
+  );
+  if ($node->sid)
+    $series_title = db_result(db_query("SELECT title from node where nid=%d",
+                                       $node->sid));
+  $form['series'] = array(
+    '#title'         => t('Series'),
+    '#value' => "<h4>Series: $series_title</h4>",
+    "#weight" => -20,
+  );
+  
+  $form['sid'] = array(
+    '#type'          => 'value',
+    '#default_value' => $node->sid,
+  );
+  
+  $form['hid'] = array(
+    '#type'          => 'textfield',
+    '#title'         => t('Game Host'),
+    '#required'      => TRUE,
+    '#default_value' => '0'
+  );
+  $form['num_players'] = array(
+    '#type'          => 'textfield',
+    '#title'         => 'Num Players',
+    '#required'      => TRUE,
+    '#default_value' => $node->num_players+0,
+  );
+  $form['pot_start'] = array(
+    '#type'          => 'textfield',
+    '#title'         => 'Initial Pot',
+    '#required'      => TRUE,
+    '#default_value' => $node->pot_start+0,
+  );
+  $form['buyin'] = array(
+    '#type'          => 'textfield',
+    '#title'         => 'Buyin',
+    '#required'      => TRUE,
+    '#default_value' => $node->buyin+0,
+  );
+  
+  return $form;
+}
+function poker_game_validate(&$node) {
+  
+}
+function poker_game_submit($form, &$form_state) {
+
+}
+
+function _count_games_in_series($sid) {
+  $sql = "SELECT count(*) from {node} n LEFT JOIN {poker_league_game} g 
+          ON n.nid=g.nid AND n.vid=g.vid
+          WHERE g.sid=%d";
+  return db_result(db_query($sql, $sid));
+}
+
+function poker_game_insert($node) {
+  $game_dt = strtotime($node->game_date);
+  db_query("INSERT INTO {poker_league_game} 
+            (nid, vid, sid, game_date, hid, num_players, pot_start, buyin) 
+            VALUES (%d, %d, %d, %d, %d, %d, %d, %d)", 
+           $node->nid, $node->vid, $node->sid,
+           $game_dt, $node->hid, $node->num_players, 
+           $node->pot_start, $node->buyin);
+}
+function poker_game_delete($node) {
+  db_query("DELETE FROM {poker_league_game} where nid=%d", $node->nid);
+}
+
+function poker_game_update($node) {
+  // if this is a new node or we're adding a new revision,
+  if ($node->revision) {
+    poker_game_insert($node);
+  }
+  else {
+    $game_dt = strtotime($node->game_date);
+    db_query("UPDATE {poker_league_game} 
+              SET game_date=%d, 
+                sid=%d, hid=%d, num_players=%d
+                pot_start=%d, buyin=%d
+              WHERE vid = %d", 
+             $game_dt, 
+             $node->sid, $node->hid, $node->num_players,
+             $node->pot_start, $node->buyin,
+             $node->vid);
+  }
+}
+function poker_game_load($node) {
+  $additions = db_fetch_object(
+    db_query(
+      "SELECT sid, game_date, hid, num_players, pot_start, buyin
+       FROM {poker_league_game} 
+       WHERE nid=%d AND vid=%d",
+      $node->nid, $node->vid));
+  
+  return $additions;
+}
+function poker_game_view($node, $teaser = FALSE, $page = FALSE) {
+  $node = node_prepare($node, $teaser);
+  //$node->content['blah'] = array(
+  //  '#value' => "<p>poker_game_view(blah)</p>",
+  //);
+  $node->content['game_details'] = array( 
+    '#value' => theme_poker_game_details($node),    
+  );
+  return $node;
+}
+
+function theme_poker_game_details($node) {
+  $output .= theme_poker_game_series($node);
+  $output .= theme_poker_game_date($node);
+  $output .= theme_poker_game_host($node);
+  $output .= theme_poker_game_num_players($node);
+  $output .= "<div>Initial Pot: $node->pot_start</div>\n";
+  $output .= "<div>Buyin: $node->buyin</div>\n";
+  $pot_total = $node->pot_start + $node->buyin * $node->num_players;
+  $output .= "<div>Total Pot: $pot_total</div>\n";
+  $output .= theme_poker_game_results($node);
+  return $output;
+}
+function theme_poker_game_date($node) {
+  $label = 'Game Date';
+  $datestr = date('m-d-Y', $node->game_date);
+  $output .= "<div class=\"pl_game_date\">$label: $datestr</div>";
+  return $output;
+}
+function theme_poker_game_host($node) {
+  $label = 'Host';
+
+  $sql = "SELECT name from {poker_league_players} WHERE pid=%d";
+  $name = db_result(db_query($sql, $node->hid));
+  if (!$name) $name = 'None';
+  $output = "<div class=\"game_host\">$label: $name</div>";
+  return $output;
+}
+function theme_poker_game_num_players($node) {
+  $label = 'Num Players';
+  $num_players = $node->num_players;
+  $sql = "SELECT num_players from {poker_league_game} WHERE nid=%d";
+  $result = db_query($sql, $node->nid);
+  if ($row = db_fetch_object($result)){
+    $name = $row->num_players;
+  }
+  $output = "<div class=\"num_players\">$label: $num_players</div>";
+  return $output;
+}
+function theme_poker_game_series($node) {
+  $label = 'Series';
+  $title = 'Unknown';
+  $sql = "SELECT title from {node} WHERE nid=%d";
+  $result = db_query($sql, $node->sid);
+  if ($row = db_fetch_object($result)){
+    $title = $row->title;
+  }
+  //$output = "<div class=\"series_title\">$label: $title</div>";
+  $output = "$label: " . l(t("@title", array('@title'=>$title)),
+                           "league/series/$node->sid");
+  return $output;
+}
+
+function poker_league_newgame($series_node){
+  global $user;
+  $types = node_get_types();
+  $type = 'poker_league_game';
+  // Initialize settings:
+  $node = array(
+    'uid' => $user->uid, 
+    'name' => (isset($user->name) ? $user->name : ''), 
+    'type' => $type, 
+    'language' => '',
+    'sid'      => $series_node->nid);
+  $output = "<p>poker_league_newgame($series_node->nid)</p>";
+  //$output = drupal_get_form($type .'_node_form', $node);
+  drupal_set_title(t('Create @name', array('@name' => $types[$type]->name)));
+  $output .= drupal_get_form('poker_game_form', '$node');
+  return $output;
+}
+
+
+function poker_result_load($gid, $place) {
+  $sql = "SELECT gid, place, pid, p.name, points, cash 
+          FROM {poker_league_results} r
+          LEFT JOIN {poker_league_players} p USING(pid)
+          WHERE r.gid=%d and r.place=%d";
+  $res = db_fetch_object(db_query($sql, $gid, $place));
+  return $res;
+}
+// blank game result
+function poker_result_new($gid, $place) {
+  $res->gid = $gid;
+  $res->place  = $place;
+  $res->points = _poker_rules_default_points($gid, $place);
+  $res->cash   = _poker_rules_default_payout($gid, $place);
+  return $res;
+}
+
+function _poker_result_row($result) {
+  $row = array(
+    _format_place($result->place),
+    l(t($result->name), 'league/player/' . $result->pid),
+    $result->points,
+    $result->cash,
+  );   
+  if (user_access('administer poker league')){
+    $row[] = l(t('edit'), 'league/result/' 
+               . $result->gid . '/' . $result->place . '/edit');
+  }
+  return $row;
+}
+
+function theme_poker_game_results($node) {
+  $output = "<h3>Results</h3>";
+  $gid = $node->nid;
+
+  $header = array(
+    'Place', 'Player', 'Points', '$$$',
+  );
+  if (user_access('administer poker league')){
+    $header[] = 'Operation';
+  }
+  $sql = "SELECT gid, place, pid, p.name, points, cash 
+          FROM {poker_league_results} r
+          LEFT JOIN {poker_league_players} p USING (pid)
+          WHERE r.gid=%d 
+          ORDER BY place"; 
+
+  $res = db_query($sql, $gid);
+
+  $results = array();
+  while ($row = db_fetch_object($res)){
+    $index = $row->place;
+    $results[$index] = $row;
+  }
+  
+  // Make sure we have at least a few blanks places to start
+  $num_places = 5;
+  for ($place=1;$place<=$num_places;$place++){
+    if (!$results[$place]) $results[$place] = poker_result_new($gid, $place);
+  }
+  
+  // Format results in table
+  foreach ($results as $result) {
+    $rows[] = _poker_result_row($result);
+  }
+  
+  $output .= theme('table', $header, $rows);
+
+  return $output;
+}
+
+function poker_result_edit(&$form_state, $gid, $place) {
+  $result = poker_result_load($gid, $place);
+  if (!$result){
+    $result = poker_result_new($gid, $place);
+    $form['_new'] = array('#type' => 'value', '#value' => 1);
+  }
+
+  $game = node_load($gid);
+  $title = $game->title . ': ' . _format_place($place) . ' Place';
+  drupal_set_title($title);
+  $form['_result'] = array('#type' => 'value', '#value' => $result);
+  $form['pid'] = array('#type' => 'value', '#value' => $result->pid);
+
+  $form['name'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Player Name',
+    '#default_value' => $result->name,
+  );
+  $form['points'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Points',
+    '#default_value' => $result->points,
+  );
+  $form['cash'] = array(
+    '#type' => 'textfield',
+    '#title' => 'Cash',
+    '#default_value' => $result->cash,
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+  );
+  return $form;  
+}
+function poker_result_edit_validate($form, &$form_state) {
+  $oldres = $form_state['values']['_result'];
+  $name   = trim($form_state['values']['name']);
+  $points = trim($form_state['values']['points']);
+  $cash   = trim($form_state['values']['cash']);
+
+  
+  if (strlen($name) > 0) 
+    $sql = "SELECT pid FROM {poker_league_players}
+          WHERE lower(name)=lower('%s')";
+  $pid = db_result(db_query($sql, $name, $pid));
+  if (!$pid) 
+    form_set_error(
+      'name', t("There is no registered player named <i>@name</i>.", 
+                array('@name' => $name)));
+  $form_state['values']['pid'] = $pid;
+  if (!is_numeric($points) || $points < 0)
+    form_set_error(
+      'points', t("Points must be a non-negative whole number"));
+  if (!is_numeric($cash) || $cash < 0)
+    form_set_error(
+      'cash', t("Cash must be a non-negative whole number"));
+  
+}
+function poker_result_edit_submit($form, &$form_state) {
+  $oldrec = $form_state['values']['_result'];
+  $pid    = $form_state['values']['pid'];
+  //$name   = trim($form_state['values']['name']);
+  $points = trim($form_state['values']['points']);
+  $cash   = trim($form_state['values']['cash']);
+  
+  if ($form_state['values']['_new']) {
+    $sql = "INSERT INTO {poker_league_results} (gid, place, pid, points, cash)
+            VALUES (%d, %d, %d, %d, %d)";
+    db_query($sql, $oldrec->gid, $oldrec->place, $pid, $points, $cash);
+  }
+  else {
+    $sql = "UPDATE {poker_league_results} 
+          SET pid=%d, points=%d, cash=%d
+          WHERE gid=%d AND place=%d";
+    db_query($sql,
+             $pid, $points, $cash,
+             $oldrec->gid, $oldrec->place);
+  }
+  drupal_set_message(
+    t("Edited result for gid:%gid place:%place", 
+      array('%gid' => $oldrec->gid,
+            '%place' => $oldrec->place)));
+  $form_state['redirect'] = 'league/game/' . $oldrec->gid;
+
+}
+
+
+function poker_result_confirm_delete(&$form_state, $result) {
+  $form['_result'] = array('#type' => 'value', '#value' => $result);
+
+  return confirm_form(
+    $form,
+    t('Are you sure you want to delete this result?', 
+      array('%name' => $player->name)),
+    'league/game/'. $result->gid,
+    t('This action cannot be undone.'),
+    t('Delete'), t('Cancel'));
+}
+function poker_result_confirm_delete_submit($form, &$form_state) {
+  $result = $form_state['values']['_result'];
+  poker_result_delete($result->gid, $result->place);
+  drupal_set_message(t("The result for game:%gid place: %place has been deleted.", 
+                       array('%gid'   => $result->gid,
+                             '%place' => $result->place)));
+  $form_state['redirect'] = "league/game/$result->gid";
+}
+function poker_result_delete($gid,$place) {
+    $sql = "DELETE FROM {poker_league_results} where gid=%d AND $place=%d";
+    db_query($sql, $gid,$place);
 }

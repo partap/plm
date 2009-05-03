@@ -1,194 +1,191 @@
 <?php
 // $foo=0;
-//  function poker_league_schema() {
-//    $schema['plm_seasons'] = array(
-//      'fields' => array(
-//        'sid' => array('type' => 'serial', 
-//                       'not null' => TRUE),
-//        'ymd_start' => array('type' => 'date',
-//                             'not null' => TRUE),
-//        'ymd_end'   => array('type' => 'date'),
-//        'name'      => array('type' => 'varchar(32)'),
-//      ),
-//      'primary key' => array('sid'),
- //    );
-  //    return $schema;
-
-//}
-function poker_league_install() {
-  $sql='';
-  switch ($GLOBALS['db_type']) {
-  case 'mysql':
-  case 'mysqli':
-    break;
-  case 'pgsql':
-    //ob_start(); # start buffer
-    //include_once( $_SERVER['poker_league.pgsql'] );
-    //$sql = ob_get_contents();
-    //ob_end_clean(); # end buffer */
+function poker_league_schema() {
+  $schema['poker_league'] = array(
+    'description' => 'Summary info for the entire poker series',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Node id',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default' => 0
+      ),
+      'vid' => array(
+        'description' => 'Revision id',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default' => 0
+        ),
+      'start_date' => array(
+        'description' => 'Start date of this poker series.',
+        'type' => 'int', 
+        'not null' => TRUE, 
+        'default' => 0
+      ),
+      'end_date' => array(
+        'description' => 'End date of this poker series (optional).',
+        'type' => 'int', 
+        'not null' => FALSE,  // default null
+      ),
+    ),
+    'primary key' => array(
+      'nid', 'vid'
+    ),
+  );
+  
+  $schema['poker_league_game'] = array(
+    'description' => 'A game in a poker league series',
+    'fields' => array(
+      'nid' => array(
+        'description' => 'Node id',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 'default' => 0
+      ),
+      'vid' => array(
+        'description' => 'Revision id',
+        'unsigned' => TRUE,
+        'type' => 'int', 
+        'not null' => TRUE, 'default' => 0
+      ),
+      'sid' => array(
+        'description' => 'Node id of the this game\'s series',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => TRUE, 'default' => 0
+      ),      
+      'hid' => array(
+        'description' => 'Player id of the host of this game',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default' => 0
+      ),
+      'num_players' => array(
+        'description' => 'Number of total players entered in the game',
+        'type' => 'int',         
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default' => 0
+      ),
+      'pot_start' => array(
+        'description' => 'Pot size before player buyins',
+        'type' => 'int',         
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default' => 0
+      ),
+      'buyin' => array(
+        'description' => 'Each player adds this much to the pot.',
+        'type' => 'int',         
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default' => 0
+      ),
+      'game_date' => array(
+        'type' => 'int', 'not null' => TRUE, 'default' => 0
+      ), 
+    ),
+    'primary key' => array(
+      'nid', 'vid'
+    ),
+  );
+  $schema['poker_league_players'] = array(
+    'description' => 'Player roster for poker league',
+    'fields' => array(
+      'pid' => array(
+        'description' => 'Player Id',
+        'type' => 'serial', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+      ),
+      'uid' => array(
+        'description' => 'User id, if this player has an account on this site',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => FALSE, 'default' => 0
+      ),
+      'name' => array(
+        'description' => 'This player\'s "poker name"',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
       
-    $sql ="
--- PostgreSQL table schema for poker league 
-
--- try to modulize any rules that might change for each poker league season/game
--- 
-CREATE TABLE {plm_rulesets} (
-    rid           SERIAL PRIMARY KEY,
-    name          VARCHAR(256) -- short description of rules
-);";
-    db_query($sql);
-
-    $sql="
-CREATE TABLE {plm_paysets} (
-    payid     SERIAL PRIMARY KEY,
-    name      VARCHAR(256), -- short description of rules
-    buyin     INTEGER,
-    minPot    INTEGER
-);";
-      db_query($sql);
-    $sql="
--- individual payouts for paysets
-CREATE TABLE {plm_payouts} (
-    payid         INTEGER NOT NULL,
-    numPlayers    INTEGER NOT NULL,
-    place         INTEGER NOT NULL, 
-    amount        INTEGER NOT NULL,
-    PRIMARY KEY (payid,numPlayers,place),
-    FOREIGN KEY (payid) REFERENCES {plm_paysets} (payid)
-);";
-    db_query($sql);
-    $sql="
--- paysets associated with rulesets
-CREATE TABLE {plm_rulesetpaysets} (
-    rid INTEGER NOT NULL,
-    payid INTEGER NOT NULL,
-    FOREIGN KEY (rid) REFERENCES {plm_rulesets} (rid),
-    FOREIGN KEY (payid) REFERENCES {plm_paysets} (payid),
-    PRIMARY KEY (rid,payid)
-);";
-    db_query($sql);
-
-    $sql="
-CREATE TABLE {plm_contribs} (
-    cid     SERIAL PRIMARY KEY,
-    name    VARCHAR(32), 
-    amount  INTEGER NOT NULL
-);";
-    db_query($sql);
-
-    $sql="
-CREATE TABLE {plm_rulesetcontribs} (
-    rid INTEGER NOT NULL,
-    cid INTEGER NOT NULL,
-    FOREIGN KEY (rid) REFERENCES {plm_rulesets} (rid),
-    FOREIGN KEY (cid) REFERENCES {plm_contribs} (cid),
-    PRIMARY KEY (rid,cid)
-);";
-    db_query($sql);
-
-    $sql="
--- records for each poker season, or league series or whatever
-CREATE TABLE {plm_seasons} (
-    sid      SERIAL PRIMARY KEY,
-    ymdStart DATE NOT NULL,
-    ymdEnd   DATE,
-    name     VARCHAR(32)
-);";
-    db_query($sql);
-
-    $sql="
-CREATE TABLE {plm_players} (		
-    pid   SERIAL PRIMARY KEY,	
-    name  VARCHAR(32) NOT NULL UNIQUE
-);";
-    db_query($sql);
-
-
-    $sql="
--- record for each poker game
-CREATE TABLE {plm_games} (
-    gid 	SERIAL PRIMARY KEY, -- guid for this game
-    sid   	INTEGER NOT NULL, -- seasonId
-    rid         INTEGER NOT NULL, -- rulesetId
-    ymd  	DATE NOT NULL,
-    name 	VARCHAR(32), --eg 'Week 3'
-    hostid      INTEGER, -- player id
-    numPlayers 	INTEGER,   -- number of players in this game
-    			   -- NULL means calculate values from 
-                           -- #gid gamePlayers recs for this game
-    finished    SMALLINT, -- is the game finished?
+    ),
+    'unique keys' => array(
+      'name'  => array('name'),
+    ),
     
-    FOREIGN KEY (rid)  REFERENCES {plm_rulesets} (rid) ,
-    FOREIGN KEY (hostid) REFERENCES {plm_players} (pid) 
-);";
-    db_query($sql);
-
-    $sql="
-CREATE TABLE {plm_gamePlayers} (
-    gid       INTEGER NOT NULL,   -- game id
-    pid       INTEGER NOT NULL,   -- player id
-    verified  SMALLINT DEFAULT 0, -- showed up, paid  
-    PRIMARY KEY (gid,pid),
-    FOREIGN KEY (pid) REFERENCES {plm_players} (pid),
-    FOREIGN KEY (gid) REFERENCES {plm_games} (gid)
-);";
-    db_query($sql);
-
-    $sql="
-CREATE TABLE plm_gameResults (
-    gid    INTEGER NOT NULL, -- game id
-    pid    INTEGER NOT NULL, -- player id
-    place  INTEGER NOT NULL, -- player place
-    PRIMARY KEY (gid, pid, place),
-    FOREIGN KEY (pid) REFERENCES {plm_players} (pid),
-    FOREIGN KEY (gid) REFERENCES {plm_games} (gid)
-);";
-    db_query($sql);
-
-    break;
-  }
+    'primary key' => array('pid'),
+  );
+  $schema['poker_league_results'] = array(
+    'description' => 'Game results',
+    'fields' => array(
+      'gid' => array(
+        'description' => 'Game Id',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+      ),
+      'place' => array(
+        'description' => 'Place Finished',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE,
+        
+      ),
+      'pid' => array(
+        'description' => 'Player Id',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default'  => 0,
+      ),
+      'points' => array(
+        'description' => 'Points Earned',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default'  => 0,
+      ),
+      'cash' => array(
+        'description' => 'Cash Winnings',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+        'default'  => 0,
+      ),
+    ),
+    'primary key' => array('gid', 'place'),
+  );
+  
+  return $schema;
 }
 
-function poker_league_update_1() {
-  $ret = array();
-  //db_add_field($ret, 'plm_games', 'finished', 
-  //             array('type' => 'int:tiny',
-  //                   'default' => 0));
-  db_query("ALTER TABLE {plm_games} 
-            ADD COLUMN finished SMALLINT NOT NULL DEFAULT 0;");
-  return $ret;
+function poker_league_install() {
+  drupal_install_schema('poker_league');
 }
 
 function poker_league_uninstall() {
-//   db_query("DROP TABLE plm_gameresults_pkey");
-//   db_query("DROP TABLE plm_rulesets_rid_seq");          
-//   db_query("DROP TABLE plm_contribs_cid_seq");          
-//   db_query("DROP TABLE plm_players_pkey");          
-//   db_query("DROP TABLE plm_rulesets_pkey");          
-//   db_query("DROP TABLE plm_paysets_payid_seq");          
-//   db_query("DROP TABLE plm_contribs_pkey");          
-//   db_query("DROP TABLE plm_games_gid_seq");          
-//   db_query("DROP TABLE plm_paysets_pkey");          
-//   db_query("DROP TABLE plm_rulesetcontribs_pkey");          
-//   db_query("DROP TABLE plm_games_pkey");          
-//   db_query("DROP TABLE plm_seasons_pkey");
-//   db_query("DROP TABLE plm_gameplayers_pkey");
-//   db_query("DROP TABLE plm_players_name_key");
-//   db_query("DROP TABLE plm_rulesetpaysets_pkey");
-//   db_query("DROP TABLE plm_seasons_sid_seq");
-//   db_query("DROP TABLE plm_payouts_pkey");
-//   db_query("DROP TABLE plm_players_pid_seq");
+  db_query("DELETE FROM {node} where type='poker_league'");
+  db_query("DELETE FROM {node} where type='poker_league_game'");
+  drupal_uninstall_schema('poker_league');
 
-  db_query("DROP TABLE {plm_gameresults}");
-  db_query("DROP TABLE {plm_gameplayers}");          
-  db_query("DROP TABLE {plm_games}");          
-  db_query("DROP TABLE {plm_players}");          
-  db_query("DROP TABLE {plm_seasons}");
-  db_query("DROP TABLE {plm_rulesetcontribs}");          
-  db_query("DROP TABLE {plm_contribs}");              
-  db_query("DROP TABLE {plm_rulesetpaysets}");
-  db_query("DROP TABLE {plm_payouts}");
-  db_query("DROP TABLE {plm_paysets}");
-  db_query("DROP TABLE {plm_rulesets}");
+/*   db_query("DROP TABLE {plm_gameresults}"); */
+/*   db_query("DROP TABLE {plm_gameplayers}");           */
+/*   db_query("DROP TABLE {plm_games}");           */
+/*   db_query("DROP TABLE {plm_players}");           */
+/*   db_query("DROP TABLE {plm_seasons}"); */
+/*   db_query("DROP TABLE {plm_rulesetcontribs}");           */
+/*   db_query("DROP TABLE {plm_contribs}");               */
+/*   db_query("DROP TABLE {plm_rulesetpaysets}"); */
+/*   db_query("DROP TABLE {plm_payouts}"); */
+/*   db_query("DROP TABLE {plm_paysets}"); */
+/*   db_query("DROP TABLE {plm_rulesets}"); */
+  
 
 }
