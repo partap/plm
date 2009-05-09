@@ -19,7 +19,7 @@ function _format_place($place) {
 }
 
 function _poker_rules_default_buyin($sid) {
-  return 10;
+  return variable_get('poker_league_default_buyin', 10);
 }
 
 
