@@ -1,70 +1,73 @@
 <?php
-// $foo=0;
-function poker_league_schema() {
-  $schema['poker_league'] = array(
-    'description' => 'Summary info for the entire poker series',
+
+function plm_schema() {
+  $schema['plm_season'] = array(
+    'description' => 'Summary info for the entire poker season',
     'fields' => array(
-      'nid' => array(
-        'description' => 'Node id',
-        'type' => 'int', 
+      'sid' => array(
+        'description' => 'Season id',
+        'type' => 'serial', 
         'unsigned' => TRUE,
         'not null' => TRUE, 
-        'default' => 0
       ),
-      'vid' => array(
-        'description' => 'Revision id',
-        'type' => 'int', 
-        'unsigned' => TRUE,
-        'not null' => TRUE, 
-        'default' => 0
-        ),
+      'title' => array(
+        'description' => 'This season\'s unique title',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
       'start_date' => array(
-        'description' => 'Start date of this poker series.',
+        'description' => 'Start date of this poker season.',
         'type' => 'int', 
         'not null' => TRUE, 
         'default' => 0
       ),
       'end_date' => array(
-        'description' => 'End date of this poker series (optional).',
+        'description' => 'End date of this poker season (optional).',
         'type' => 'int', 
         'not null' => FALSE,  // default null
       ),
     ),
-    'primary key' => array(
-      'nid', 'vid'
+    'primary key' => array('sid'),
+    'unique keys' => array(
+      'title'  => array('title'),
     ),
+    
   );
   
-  $schema['poker_league_game'] = array(
-    'description' => 'A game in a poker league series',
+  $schema['plm_event'] = array(
+    'description' => 'An event in a poker league season',
     'fields' => array(
-      'nid' => array(
-        'description' => 'Node id',
-        'type' => 'int', 
+      'eid' => array(
+        'description' => 'Event id',
+        'type' => 'serial', 
         'unsigned' => TRUE,
-        'not null' => TRUE, 'default' => 0
-      ),
-      'vid' => array(
-        'description' => 'Revision id',
-        'unsigned' => TRUE,
-        'type' => 'int', 
-        'not null' => TRUE, 'default' => 0
+        'not null' => TRUE, 
       ),
       'sid' => array(
-        'description' => 'Node id of the this game\'s series',
-        'type' => 'int',
+        'description' => 'Season id',
         'unsigned' => TRUE,
-        'not null' => TRUE, 'default' => 0
-      ),      
+        'type' => 'int', 
+        'not null' => TRUE, 
+        'default' => 0
+      ),
+      'title' => array(
+        'description' => 'This event\'s title.  Must be unique within the season.',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+        'default' => '',
+      ),
       'hid' => array(
-        'description' => 'Player id of the host of this game',
+        'description' => 'Player id of the host of this event',
         'type' => 'int', 
         'unsigned' => TRUE,
         'not null' => TRUE, 
         'default' => 0
       ),
       'num_players' => array(
-        'description' => 'Number of total players entered in the game',
+        'description' => 'Number of total players entered in the event',
         'type' => 'int',         
         'unsigned' => TRUE,
         'not null' => TRUE, 
@@ -78,21 +81,27 @@ function poker_league_schema() {
         'default' => 0
       ),
       'buyin' => array(
-        'description' => 'Each player adds this much to the pot.',
+        'description' => 'Each player contributes this much to the pot.',
         'type' => 'int',         
         'unsigned' => TRUE,
         'not null' => TRUE, 
         'default' => 0
       ),
-      'game_date' => array(
+      'event_date' => array(
+        'description' => 'Date of the event',
         'type' => 'int', 'not null' => TRUE, 'default' => 0
       ), 
+      'finished' => array(
+        'description' => 'boolean: nonzero if the results have been finalized',
+        'type' => 'int', 'size' => 'tiny',
+        'not null' => TRUE, 'default' => 0
+      ),
     ),
     'primary key' => array(
-      'nid', 'vid'
+      'eid',
     ),
   );
-  $schema['poker_league_players'] = array(
+  $schema['plm_player'] = array(
     'description' => 'Player roster for poker league',
     'fields' => array(
       'pid' => array(
@@ -119,14 +128,13 @@ function poker_league_schema() {
     'unique keys' => array(
       'name'  => array('name'),
     ),
-    
     'primary key' => array('pid'),
   );
-  $schema['poker_league_results'] = array(
-    'description' => 'Game results',
+  $schema['plm_result'] = array(
+    'description' => 'Event results',
     'fields' => array(
-      'gid' => array(
-        'description' => 'Game Id',
+      'eid' => array(
+        'description' => 'Event Id',
         'type' => 'int', 
         'unsigned' => TRUE,
         'not null' => TRUE, 
@@ -160,32 +168,85 @@ function poker_league_schema() {
         'default'  => 0,
       ),
     ),
-    'primary key' => array('gid', 'place'),
+    'primary key' => array('eid', 'place'),
+    'unique keys' => array(
+      'eid_pid' => array('eid', 'pid'),
+    )
+  );
+  $schema['plm_payset'] = array(
+    'description' => 'Payout Structures',
+    'fields' => array(
+      'payid' => array(
+        'description' => 'Paystruct Id',
+        'type' => 'serial', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+      ),
+      'title' => array(
+        'description' => 'Description for this payout structure',
+        'type' => 'varchar',
+        'length' => 32,
+        'not null' => TRUE,
+      ),
+      'buyin' => array(
+        'description' => 'Player buy-in',
+        'type'        => 'int',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE
+      ),
+      'pot_bonus' => array(
+        'description' => 'Extra added to prizepool (in addition to player buy-ins)',
+        'type'        => 'int',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE
+      ),
+    ),
+    'primary key' => array('payid'),
+    'unique keys' => array(
+      'title' => array('title'),
+    )
+  );
+  $schema['plm_payrule'] = array(
+    'description' => 'Individual payout rules',
+    'fields' => array(
+      'payid' => array(
+        'description' => 'Payset id for this rule',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+      ),
+      'num_players' => array(
+        'description' => 'Number of entrants to match this rule',
+        'type'        => 'int',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE,
+      ),
+      'place' => array(
+        'description' => 'Finishing place (1-based)',
+        'type'        => 'int',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE,
+      ),
+      'amount' => array(
+        'description' => 'Payout amount',
+        'type'        => 'int',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE,
+      ),
+    ),
+    'primary key' => array('payid', 'num_players', 'place'),
+    
   );
   
   return $schema;
 }
 
-function poker_league_install() {
-  drupal_install_schema('poker_league');
+function plm_install() {
+  drupal_install_schema('plm');
 }
 
-function poker_league_uninstall() {
-  db_query("DELETE FROM {node} where type='poker_league'");
-  db_query("DELETE FROM {node} where type='poker_league_game'");
-  drupal_uninstall_schema('poker_league');
-
-/*   db_query("DROP TABLE {plm_gameresults}"); */
-/*   db_query("DROP TABLE {plm_gameplayers}");           */
-/*   db_query("DROP TABLE {plm_games}");           */
-/*   db_query("DROP TABLE {plm_players}");           */
-/*   db_query("DROP TABLE {plm_seasons}"); */
-/*   db_query("DROP TABLE {plm_rulesetcontribs}");           */
-/*   db_query("DROP TABLE {plm_contribs}");               */
-/*   db_query("DROP TABLE {plm_rulesetpaysets}"); */
-/*   db_query("DROP TABLE {plm_payouts}"); */
-/*   db_query("DROP TABLE {plm_paysets}"); */
-/*   db_query("DROP TABLE {plm_rulesets}"); */
-  
-
+function plm_uninstall() {
+  db_query("DELETE FROM {node} where type='plm_season'");
+  db_query("DELETE FROM {node} where type='plm_event'");
+  drupal_uninstall_schema('plm');
 }

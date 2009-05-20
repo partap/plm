@@ -1,7 +1,8 @@
 <?php
 // output place string. eg "1st" for 1, "2nd" for 2, etc...
-function _format_place($place) {
+function _plm_format_place($place) {
   if (!is_numeric($place)) return $place;
+  if ($place > 3 && $place < 21) return $place . 'th';
   switch ($place%10){
   case 1:
     $suffix = 'st';
@@ -18,14 +19,14 @@ function _format_place($place) {
   return $place . $suffix;
 }
 
-function _poker_rules_default_buyin($sid) {
-  return variable_get('poker_league_default_buyin', 10);
+function _plm_rules_default_buyin($sid) {
+  return variable_get('plm_default_buyin', 10);
 }
 
 
-// Default point distribution for a game 
+// Default point distribution for a event 
 // Could be dependent on ruleset for season, etc, but hardcoded for now
-function _poker_rules_default_points($gid, $place) {
+function _plm_rules_default_points($gid, $place) {
   switch ($place){
   case 1:
     return 10;
@@ -43,11 +44,11 @@ function _poker_rules_default_points($gid, $place) {
 }
 
 
-function _poker_rules_default_payout($gid, $place) {
-  $game = node_load($gid);
-  $num_players = $game->num_players;
-  $buyin = $game->buyin;
-  $pot_total  = $game->pot_start + $num_players*$buyin;
+function _plm_rules_default_payout($gid, $place) {
+  $event = _get_plm_event($gid);
+  $num_players = $event->num_players;
+  $buyin = $event->buyin;
+  $pot_total  = $event->pot_start + $num_players*$buyin;
   if ($pot_total <= 0) return 0;
   $pot_left = $pot_total;
   if ($buyin == 0) $buyin = $pot_total/$num_players;
