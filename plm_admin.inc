@@ -169,7 +169,7 @@ function plm_season_form(&$form_state, $rec = NULL) {
   );
 
   $dest = 'plm/seasons';
-  if ($sid) $dest = "plm/seasons/sid/$sid";
+  if ($sid) $dest = "plm/seasons/$sid";
   $form['cancel'] = array(
     '#value' => l(t('Cancel'), $dest ),
   );
@@ -224,7 +224,7 @@ function plm_season_form_submit($form, &$form_state) {
   }
   else return;
   if (!$sid) $sid = $res;
-  $form_state['redirect'] = "plm/seasons/sid/$sid";
+  $form_state['redirect'] = "plm/seasons/$sid";
 
   $autogen = $form_state['values']['autogen'];
   if (!$autogen) return;
@@ -257,7 +257,7 @@ function plm_season_confirm_delete(&$form_state, $season) {
     $form,
     t('Are you sure you want to delete <i>%title</i>?', 
       array('%title' => $season->title)),
-    'plm/seasons/sid/'. $season->sid,
+    'plm/seasons/'. $season->sid,
     t('All event results for this season will be deleted. '
       . 'This action cannot be undone.'),
     t('Delete'), t('Cancel'));
@@ -283,6 +283,9 @@ function plm_player_form(&$form_state, $player=NULL) {
     '#default_value' => $player->name,
     '#required' => TRUE,
   );
+
+  
+
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => 'Submit',
@@ -327,7 +330,7 @@ function plm_player_confirm_delete(&$form_state, $player) {
     $form,
     t('Are you sure you want to delete the player %name?', 
       array('%name' => $player->name)),
-    'plm/players/'. $player->pid,
+    'plm/players/pid/'. $player->pid,
     t('All event results for this player will be deleted. '
       . 'This action cannot be undone.'),
     t('Delete'), t('Cancel'));
@@ -378,6 +381,8 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#title' => t('Title'),
     '#required' => TRUE,
     '#default_value' => $oldrec->title,
+    '#size' => 32,
+    '#maxlength' => 32,
     '#weight' => -5
   );
 
@@ -417,23 +422,32 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#type'          => 'textfield',
     '#title'         => t('Event Host'),
     '#default_value' => $host,
+    '#size' => 16,
+    '#maxlength' => 16,
+
   );
   $form['num_players'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Num Players',
     '#required'      => TRUE,
+    '#size' => 4,
+    '#maxlength' => 4,
     '#default_value' => $oldrec->num_players+0,
   );
   $form['pot_start'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Initial Pot',
     '#required'      => TRUE,
+    '#size' => 5,
+    '#maxlength' => 5,
     '#default_value' => $oldrec->pot_start+0,
   );
   $form['buyin'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Buy-In',
     '#required'      => TRUE,
+    '#size' => 5,
+    '#maxlength' => 5,
     '#default_value' => $oldrec->buyin+0,
   );
    $form['finished'] = array(
@@ -442,12 +456,13 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#required' => TRUE,
     '#default_value' => $oldrec->finished,
     '#description' => 'Check this to finalize the results.',
-    '#weight' => 0,
+    '#weight' => 1,
   );
 
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => 'Save',
+    '#weight' => 10,
   );
 
   return $form;

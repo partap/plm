@@ -6,11 +6,18 @@
  * - Menu for navigating within module
  *   - Main Page
  *     - Recent News (results, announcements)
+ *   - Blocks
+ *     - Leaderboard, Last Results, Next Game
  *   - Players
  *     - list all, browse 
  *   - Results (browse past games, other seasons)
+ *     - games listed under plm/events/%event because we don't want to need
+ *       the sid AND the eid.  Once we load the event, 
+ *       we have sid and so we can either rewrite breadcrumbs,
+ *       or use a custom seasons browsing menu or selector...investigate ?destination=xxx...
  *   - Schedule (upcoming games)
  *   - Current Standings
+
  * - Handle final table  - Accumulate rakes?
  * - Publish game results when done (custom node type?)
  *   - send email to list
@@ -30,22 +37,12 @@ function plm_menu() {
   $items = array();
 
   $items['plm'] = array(
-    'title' => 'Poker League (PLM)',
+    'title' => 'Roker League (PLM)',
     'page callback' => 'plm_main',
     'access arguments' => array('access poker league content'),
     'description' => t('Poker League'),
     'type' => MENU_NORMAL_ITEM,
     'menu_name' => 'plm',
-  );
-  $items['plm/seasons/sid/%plm_season/newevent'] = array(
-    'title' => 'New Event',
-    'description' => 'Set up a new event',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_event_form',  NULL, 3),
-    'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_LOCAL_TASK,
-    'file' => 'plm_admin.inc',
   );
   $items['plm/seasons'] = array(
     'title' => t('Seasons'),
@@ -71,47 +68,60 @@ function plm_menu() {
     'file' => 'plm_admin.inc',
     'weight' => 0,
   ); 
-  $items['plm/seasons/sid/%plm_season'] = array(
-    'title' => t('Season'),
-    'title callback' => 'plm_season_title',
-    'title_arguments' => array(3),
+
+  $items['plm/seasons/%plm_season'] = array(
+    'title' => t('View Season'),
+/*     'title callback' => 'plm_season_title', */
+/*     'title_arguments' => array(3), */
     'description' => 'View a poker season',
     'page callback' => 'plm_season_view',
-    'page arguments' => array(3),
+    'page arguments' => array(2),
     'access arguments' => array('access poker league content'),
-    'type' => MENU_NORMAL_ITEM,
+    //'type' => MENU_NORMAL_ITEM,
+    //'type' => MENU_LOCAL_TASK,
+    //'type' => MENU_CALLBACK,
   );
-  $items['plm/seasons/sid/%plm_season/view'] = array(
-    'title'  => t('Schedule'),
+  $items['plm/seasons/%plm_season/view'] = array(
+    'title'  => t('View'),
     'weight' => -1,
     'type'   => MENU_DEFAULT_LOCAL_TASK,
   );
-  $items['plm/seasons/sid/%plm_season/edit'] = array(
+  $items['plm/seasons/%plm_season/edit'] = array(
     'title' => t('Edit'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_season_form', 3),
+    'page arguments' => array('plm_season_form', 2),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_LOCAL_TASK,
+    //'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
   ); 
-  $items['plm/seasons/sid/%plm_season/delete'] = array(
+  $items['plm/seasons/%plm_season/delete'] = array(
     'title' => t('Delete'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_season_confirm_delete', 3),
+    'page arguments' => array('plm_season_confirm_delete', 2),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_LOCAL_TASK,
+    //'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
   ); 
-  $items['plm/seasons/sid/%plm_season/standings'] = array(
+  $items['plm/seasons/%plm_season/standings'] = array(
     'title' => t('Standings'),
     'description' => 'View the current standings for this season.',
     'page callback' => 'plm_standings',
-    'page arguments' => array(3),
+    'page arguments' => array(2),
     'access arguments' => array('access poker league content'),
-    'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_LOCAL_TASK,
+    //'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
+  );
+  $items['plm/seasons/%plm_season/newevent'] = array(
+    'title' => 'New Event',
+    'description' => 'Set up a new event',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_event_form',  NULL, 2),
+    'access arguments' => array('administer poker league'),
+    //'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'plm_admin.inc',
   );
   $items['plm/events/%plm_event'] = array(
     'title' => t('Event'),
@@ -134,8 +144,8 @@ function plm_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_event_form', 2),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_LOCAL_TASK,
+    //'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
   );
   $items['plm/players'] = array(
@@ -144,7 +154,7 @@ function plm_menu() {
     'page callback' => 'plm_players_list',
     'access arguments' => array('access poker league content'),
     'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_LOCAL_TASK,
+    //'type' => MENU_LOCAL_TASK,
   );
   $items['plm/players/list'] = array(
     'title'  => t('List Players'),
@@ -157,36 +167,37 @@ function plm_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_player_form'),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_LOCAL_TASK,
+    //'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
   );
-  $items['plm/players/%plm_player'] = array(
+  $items['plm/players/pid/%plm_player'] = array(
     'title' => t('Player'),
     'description' => 'Show player details',
     'page callback' => 'plm_player_view',
-    'page arguments' => array(2),
+    'page arguments' => array(3),
     'access arguments' => array('access poker league content'),
     'type' => MENU_NORMAL_ITEM,
-//    'type' => MENU_CALLBACK,
+    //'type' => MENU_LOCAL_TASK,
+    //    'type' => MENU_CALLBACK,
   );
-  $items['plm/players/%plm_player/edit'] = array(
+  $items['plm/players/pid/%plm_player/edit'] = array(
     'title' => t('Edit Player'),
     'description' => 'Edit player details',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_player_form', 2),
+    'page arguments' => array('plm_player_form', 3),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
 //    'type' => MENU_CALLBACK,
     'file' => 'plm_admin.inc',
   );
- $items['plm/players/%plm_player/delete'] = array(
+ $items['plm/players/pid/%plm_player/delete'] = array(
     'title' => t('Delete Player'),
     'description' => 'Delete player from the roster',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_player_confirm_delete', 2),
+    'page arguments' => array('plm_player_confirm_delete', 3),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
 //    'type' => MENU_CALLBACK,
     'file' => 'plm_admin.inc',
   );
@@ -198,8 +209,8 @@ function plm_menu() {
    'page arguments' => array('plm_result_form', 2),
    'access arguments' => array('administer poker league'),
    'file' => 'plm_admin.inc',
-    'type' => MENU_NORMAL_ITEM,
-//   'type' => MENU_CALLBACK,
+   //'type' => MENU_NORMAL_ITEM,
+   'type' => MENU_CALLBACK,
  );
  $items['plm/results/%plm_result/%/delete'] = array(
    'title' => t('Delete Result'),
@@ -208,8 +219,8 @@ function plm_menu() {
    'page callback' => 'drupal_get_form',
    'page arguments' => array('plm_result_confirm_delete', 2),
    'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
-//   'type' => MENU_CALLBACK,
+   ///'type' => MENU_NORMAL_ITEM,
+   'type' => MENU_CALLBACK,
    'file' => 'plm_admin.inc',
  );
 
@@ -234,51 +245,55 @@ function plm_menu() {
     'file' => 'plm_admin.inc',
   );
 
-  $items['admin/plm/seasons'] = array(
-    'title' => t('Seasons'),
-    'description' => 'Manage Seasons',
-    'page callback' => 'plm_seasons_list',
-    'page arguments' => array(NULL),
-    'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
-    //'file' => 'plm_admin.inc',
-  );
+/*   $items['admin/plm/seasons'] = array( */
+/*     'title' => t('Seasons'), */
+/*     'description' => 'Manage Seasons', */
+/*     'page callback' => 'plm_seasons_list', */
+/*     'page arguments' => array(NULL), */
+/*     'access arguments' => array('administer poker league'), */
+/*     'type' => MENU_NORMAL_ITEM, */
+/*     //'file' => 'plm_admin.inc', */
+/*   ); */
   
-  $items['admin/plm/seasons/list'] = array(
-    'title'  => t('List Seasons'),
-    'weight' => -1,
-    'type'   => MENU_DEFAULT_LOCAL_TASK,
-  );
+/*   $items['admin/plm/seasons/list'] = array( */
+/*     'title'  => t('List Seasons'), */
+/*     'weight' => -1, */
+/*     'type'   => MENU_DEFAULT_LOCAL_TASK, */
+/*   ); */
   
-  $items['admin/plm/seasons/new'] = array(
-    'title' => t('New Season'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_season_form'),
-    'access arguments' => array('administer poker league'),
-    'type' => MENU_LOCAL_TASK,
-    'file' => 'plm_admin.inc',
-    'weight' => 0,
-  ); 
-  $items['admin/plm/seasons/sid/%sid/edit'] = array(
-    'title' => t('Edit Season'),
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_season_form',  4),
-    'access arguments' => array('administer poker league'),
-    'type' => MENU_CALLBACK,
-    'file' => 'plm_admin.inc',
-  ); 
-  $items['admin/plm/seasons/sid/%sid/delete'] = array(
-    'title' => 'Delete Season',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_season_delete_confirm', 3),
-    'access arguments' => array('administer poker league'),
-    'file' => 'plm_admin.inc',
-    'type' => MENU_CALLBACK,
-  );
+/*   $items['admin/plm/seasons/new'] = array( */
+/*     'title' => t('New Reason'), */
+/*     'page callback' => 'drupal_get_form', */
+/*     'page arguments' => array('plm_season_form'), */
+/*     'access arguments' => array('administer poker league'), */
+/*     'type' => MENU_LOCAL_TASK, */
+/*     'file' => 'plm_admin.inc', */
+/*     'weight' => 0, */
+/*   );  */
+/*   $items['admin/plm/seasons/%sid/edit'] = array( */
+/*     'title' => t('Edit Season'), */
+/*     'page callback' => 'drupal_get_form', */
+/*     'page arguments' => array('plm_season_form',  5), */
+/*     'access arguments' => array('administer poker league'), */
+/*     'type' => MENU_CALLBACK, */
+/*     'file' => 'plm_admin.inc', */
+/*   );  */
+/*   $items['admin/plm/seasons/%sid/delete'] = array( */
+/*     'title' => 'Delete Season', */
+/*     'page callback' => 'drupal_get_form', */
+/*     'page arguments' => array('plm_season_delete_confirm', 3), */
+/*     'access arguments' => array('administer poker league'), */
+/*     'file' => 'plm_admin.inc', */
+/*     'type' => MENU_CALLBACK, */
+/*   ); */
 
 
   return $items;
   
+}
+
+function plm_menu_alter(){
+
 }
 
 function plm_perm() {
@@ -310,8 +325,23 @@ function plm_event_access($op, $node, $account) {
 
 function plm_main() {
   $content .= "<p>Poker League Manager Main Page</p>";
-  return $content;
-  //print theme('page', $content);
+  $items = plm_menu();
+  $content .= '<dl class="admin-list">';
+  foreach ( $items as $path => $menu ) {
+    $t = explode('/', $path);
+    if ( count($t) == 2 ) {
+      if (($t[0] == 'plm' ) 
+          && $menu['type'] == MENU_NORMAL_ITEM) {
+        $content .= '<dt>'. l($menu['title'], $path) .'</dt>';
+        if ( isset($menu['description']) ) {
+          $content .= '<dd>'. $menu['description'] .'</dd>';
+        }
+      }
+    }
+  }
+  $content .= "</dl>";
+  print theme('page', $content);
+
 }
 
 function plm_standings($plm_season) {
@@ -334,7 +364,7 @@ function plm_standings($plm_season) {
   foreach ($players as $rec) {
     $rowdata = array(
       $rank,      
-      l(t($rec->name), 'plm/players/' . $rec->pid),
+      l(t($rec->name), 'plm/players/pid/' . $rec->pid),
       $rec->points,
       $rec->cash ? '$' . $rec->cash : '',
       $rec->places ? $rec->places : '',
@@ -347,10 +377,10 @@ function plm_standings($plm_season) {
   //print theme('page', $content);
 }
 
-function plm_season_title($plm_season) {
-  //print_r('DEBUG: Season: (' . $plm_season . ')');
-  return $plm_season->title;
-}
+/* function plm_season_title($plm_season) { */
+/*   //print_r('DEBUG: Season: (' . $plm_season . ')'); */
+/*   return $plm_season->title; */
+/* } */
 
 function plm_player_load($pid) {
   return _get_plm_player($pid);
@@ -377,15 +407,15 @@ function plm_players_list() {
 
   foreach ($players as $rec) {
     $rowdata = array(
-      l(t($rec->name), 'plm/players/' . $rec->pid),
+      l(t($rec->name), 'plm/players/pid/' . $rec->pid),
       $rec->points,
       $rec->cash ? '$' . $rec->cash : '',
       $rec->places ? $rec->places : '',
     );
 
     if (user_access('administer poker league')) {
-      $rowdata[] = l(t('edit'), 'plm/players/' . $rec->pid . '/edit');
-      $rowdata[] = l(t('delete'), 'plm/players/' . $rec->pid . '/delete');
+      $rowdata[] = l(t('edit'), 'plm/players/pid/' . $rec->pid . '/edit');
+      $rowdata[] = l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete');
     }
     $rows[] = $rowdata;
   }
@@ -417,6 +447,7 @@ function theme_plm_player_details($player) {
   $tot_points = 0;
   $tot_cash   = 0;
   //print_r('Hello' . $places);
+  //print_r($player);
   foreach ($places as $r) {
     // Season Totals
     if ($sid && $sid != $r->sid){
@@ -465,9 +496,9 @@ function theme_plm_player_details($player) {
 function plm_season_load($sid) {
   return _get_plm_season($sid);
 }
-function plm_season_to_arg($s) {
-  return $s->sid;
-}
+//function plm_season_to_arg($s) {
+//  return $s->sid;
+//}
 
 function plm_seasons_list() {
   //$output .= '<h5>plm_seasons_list()</h5>';
@@ -494,7 +525,7 @@ function plm_seasons_list() {
     else $datestr = 'Started ' . $datestr;
     //$output .= "<p>item($s->title, $datestr)</p>";
     $list[] = l(t("$s->title"), 
-                "plm/seasons/sid/$s->sid") . "<div>$datestr</div>";
+                "plm/seasons/$s->sid") . "<div>$datestr</div>";
   }
   $output .= theme('item_list', $list);
   return $output;
@@ -646,7 +677,7 @@ function theme_plm_event_season($season) {
   $label = 'Season';
   $title = $season->title;
   $output = "$label: " . l(t("@title", array('@title'=>$title)),
-                           "plm/seasons/sid/$season->sid");
+                           "plm/seasons/$season->sid");
   return $output;
 }
 
@@ -667,7 +698,7 @@ function _plm_result_new($eid, $place) {
 function _plm_result_row($result) {
   $row = array(
     _plm_format_place($result->place),
-    l(t($result->name), 'plm/players/' . $result->pid),
+    l(t($result->name), 'plm/players/pid/' . $result->pid),
     $result->points,
     '$' . $result->cash,
   );   
@@ -690,7 +721,8 @@ function theme_plm_event_results($event) {
     'Place', 'Player', 'Points', '$$$',
   );
   if (user_access('administer poker league')){
-    $header[] = 'Operation';
+    //$header[] = 'Operation';
+    $header[] = '';
   }
 
   $num_places = $event->num_players;
