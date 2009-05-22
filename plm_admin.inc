@@ -540,6 +540,12 @@ function plm_result_form(&$form_state, $result) {
     '#title' => 'Player Name',
     '#default_value' => $result->name,
   );
+  $form['_new_player'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'New Player',
+    '#default_value' => FALSE,
+    '#description' => 'Check this box to add a new player to the roster.',
+  );
   $form['points'] = array(
     '#type' => 'textfield',
     '#title' => 'Points',
@@ -565,8 +571,10 @@ function plm_result_form(&$form_state, $result) {
   return $form;  
 }
 function plm_result_form_validate($form, &$form_state) {
-  $eid = $form_state['values']['_eid'];
-  $place = $form_state['values']['_place'];
+  $eid        = $form_state['values']['_eid'];
+  $place      = $form_state['values']['_place'];
+  $new_player = $form_state['values']['_new_player'];
+
   $name   = trim($form_state['values']['name']);
   $points = trim($form_state['values']['points']);
   $cash   = trim($form_state['values']['cash']);
@@ -575,27 +583,43 @@ function plm_result_form_validate($form, &$form_state) {
   if (strlen($name) > 0) 
     $rec = _get_plm_player_by_name($name);
   $pid = $rec->pid;
-  if (!$pid) 
-    form_set_error(
-      'name', t("There is no registered player named <i>@name</i>.", 
-                array('@name' => $name)));
-  
+  if (!$pid) {
+    if (!$new_player) {
+      form_set_error(
+        'name', t("There is no registered player named <i>@name</i>.", 
+                  array('@name' => $name)));
+    }
+  }
+  else {
+    if ($new_player) {
+      form_set_error(
+        'name', t("There is already a player named <i>@name</i>.", 
+                  array('@name' => $name)));      
+    }
+  }
   $form_state['values']['pid'] = $pid;
   if (!is_numeric($points) || $points < 0)
     form_set_error(
-      'points', t("Points must be a non-negative whole number"));
+      'points', t("Points must be a non-negative value"));
   if (!is_numeric($cash) || $cash < 0)
     form_set_error(
-      'cash', t("Cash must be a non-negative whole number"));
+      'cash', t("Cash must be a non-negative value"));
   
 }
 function plm_result_form_submit($form, &$form_state) {
-  $r->eid = $form_state['values']['_eid'];
-  $r->place = $form_state['values']['_place'];
-  $r->pid    = $form_state['values']['pid'];
-  $r->points = trim($form_state['values']['points']);
-  $r->cash   = trim($form_state['values']['cash']);
+  $r->eid     = $form_state['values']['_eid'];
+  $r->place   = $form_state['values']['_place'];
+  $r->pid     = $form_state['values']['pid'];
+  $r->points  = trim($form_state['values']['points']);
+  $r->cash    = trim($form_state['values']['cash']);
+  $name       = trim($form_state['values']['name']);
   
+  $new_player = $form_state['values']['_new_player'];
+  if ($new_player){
+    $rec = new stdClass();
+    $rec->name = $name;
+    $r->pid = _insert_plm_player($rec);
+  }
   $oldrec = _get_plm_result($r->eid, $r->place);
   if (!$oldrec) {
     if (_insert_plm_result($r)) {

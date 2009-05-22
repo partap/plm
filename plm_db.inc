@@ -27,8 +27,9 @@ function _get_plm_players($sort_phrase, $where_phrase = '') {
   return $list;
 }
 
-function _get_plm_standings($sid) {
+function _get_plm_standings($sid, $limit = NULL) {
   $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name";
+  if ($limit) $sort_phrase .= " LIMIT $limit";
   $sql = "SELECT p.pid, p.name, e.sid,
       SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places 
     FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid 
@@ -44,7 +45,8 @@ function _get_plm_standings($sid) {
 
 function _insert_plm_player($player) {
   $sql = "INSERT INTO {plm_player} (name) VALUES ('%s')";
-  return db_query($sql, $player->name);
+  if (!db_query($sql, $player->name)) return FALSE;
+  return db_last_insert_id(db_prefix_tables('{plm_player}'), 'pid');
 }
 
 function _update_plm_player($player) {
@@ -59,12 +61,11 @@ function _delete_plm_player($pid) {
 }
 
 function _insert_plm_season($season) {
-  $table = db_prefix_tables('{plm_season}');
-  $res =  db_query("INSERT INTO $table (title, start_date, end_date) 
+  $res =  db_query("INSERT INTO {plm_season} (title, start_date, end_date) 
                     VALUES ('%s', %d, %d)", 
                    $season->title, $season->start_date, $season->end_date);
   if (!$res) return $res;
-  return db_last_insert_id($table, 'sid');
+  return db_last_insert_id(db_prefix_tables('{plm_season}'), 'eid');
   
 }
 function _update_plm_season($season) {

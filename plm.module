@@ -1,4 +1,5 @@
 <?php
+// $Id$
 /*
  * Poker League Manager: A Drupal module to manage our poker league
  * Todo:
@@ -82,7 +83,7 @@ function plm_menu() {
     //'type' => MENU_CALLBACK,
   );
   $items['plm/seasons/%plm_season/view'] = array(
-    'title'  => t('View'),
+    'title'  => t('Schedule'),
     'weight' => -1,
     'type'   => MENU_DEFAULT_LOCAL_TASK,
   );
@@ -425,7 +426,7 @@ function plm_players_list() {
 }
 
 function plm_player_view($player) {
-  drupal_set_title($player->name);
+  drupal_set_title('Player Profile: ' . $player->name);
   //$output = "<p>Details of $player->name go here</p>\n";
   $output .= theme_plm_player_details($player);
   return $output;
@@ -571,7 +572,7 @@ function theme_plm_event_list($season, $teaser) {
   $output .= "<div class=\"num_events\">$label: $num_events</div>";
   if ($num_events == 0 || $teaser) return $output . '</div>';
 
-  $header = array('Event', 'Date', 'Host', 'Entries', '');
+  $header = array('Event', 'Date', 'Host', 'Entrants', '');
   if (user_access('administer poker league')) {
     $header[] = '';
   }
@@ -668,7 +669,7 @@ function theme_plm_event_host($event) {
   return $output;
 }
 function theme_plm_event_num_players($event) {
-  $label = 'Entries';
+  $label = 'Entrants';
   $num_players = $event->num_players;
   $output = "<div class=\"num_players\">$label: $num_players</div>";
   return $output;
