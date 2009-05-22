@@ -21,6 +21,22 @@ function plm_admin() {
 }
 
 function plm_settings() {
+  $form['plm_current_season'] = array(
+    '#type' => 'select',
+    '#title' => t('Current Season'),
+    '#description' => 'Season currently underway.  Used for Schedule and Leaderboard.',
+    '#default_value' => variable_get('plm_current_season', 0),
+    '#options' => array(
+      0 => t('None'),
+    ),
+  );
+  $seasons = _get_plm_seasons();
+  if (isset($seasons)) {
+    foreach ($seasons as $s) {
+      $form['plm_current_season']['#options'][$s->sid] = $s->title;
+    }
+  }
+  
   $form['plm_default_buyin'] = array( 
     '#type' => 'textfield',
     '#title' => t('Default Buy-in'),
@@ -88,6 +104,9 @@ function plm_settings_submit($form, &$form_state) {
   $auto_number = $form_state['values']['plm_auto_number'];
   variable_set('plm_auto_number', $auto_number);  
   //print_r('auto_number: ' . $auto_number);
+  $cur_season = $form_state['values']['plm_current_season'];
+  variable_set('plm_current_season', $cur_season);
+  
 }
 
 function plm_season_form(&$form_state, $rec = NULL) {

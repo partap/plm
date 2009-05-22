@@ -28,14 +28,15 @@ function _get_plm_players($sort_phrase, $where_phrase = '') {
 }
 
 function _get_plm_standings($sid, $limit = NULL) {
-  $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name";
+  $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name NULLS LAST";
   if ($limit) $sort_phrase .= " LIMIT $limit";
   $sql = "SELECT p.pid, p.name, e.sid,
       SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places 
     FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid 
     JOIN {plm_event} e ON r.eid=e.eid
-    GROUP BY e.sid,p.pid, p.name " . $sort_phrase . " NULLS LAST"; 
-  $result = db_query($sql);
+    WHERE e.sid=%d
+    GROUP BY e.sid,p.pid, p.name " . $sort_phrase ; 
+  $result = db_query($sql, $sid);
   $list = array();
   while ($row = db_fetch_object($result)){
     $list[] = $row;
@@ -72,7 +73,7 @@ function _update_plm_season($season) {
   return db_query("UPDATE {plm_season} 
                    SET title='%s', start_date=%d, end_date=%d 
                    WHERE sid = %d", 
-                  $season->title, $season->start_date, $season->end_date);
+                  $season->title, $season->start_date, $season->end_date, $season->sid);
 }
 function _delete_plm_season($sid) {
   // Delete events, results from the season too..
@@ -125,21 +126,37 @@ function _get_num_plm_events($sid) {
 }
 
 function _get_plm_events($sid, $sort_phrase=NULL) {
-  if (!$sort_phrase) $sort_phrase='ORDER BY g.event_date';
+  if (!$sort_phrase) $sort_phrase='ORDER BY e.event_date';
   
-  $sql = "SELECT g.eid, g.title, p.name as host, g.event_date, g.hid, 
-            g.num_players, g.finished
-          FROM {plm_event} g 
-          LEFT JOIN {plm_player} p ON p.pid=g.hid 
-          WHERE g.sid=%d
+  $sql = "SELECT e.eid, e.title, p.name as host, e.event_date, e.hid, 
+            e.num_players, e.finished
+          FROM {plm_event} e 
+          LEFT JOIN {plm_player} p ON p.pid=e.hid 
+          WHERE e.sid=%d
           $sort_phrase";
   $result = db_query($sql, $sid);
   while ($row = db_fetch_object($result)){
-    //if (!$row->host) $row->host = ' - ';
     $list[] = $row;
   }
   return $list;
 }
+
+// Get all events in this season on this day
+function _get_plm_events_by_date($sid, $game_date) {
+  $sort_phrase='ORDER BY e.event_date';
+  $sql = "SELECT e.eid, e.title, p.name as host, e.event_date, e.hid, 
+          e.num_players, e.finished
+          FROM {plm_event} e 
+          LEFT JOIN {plm_player} p ON p.pid=e.hid 
+          WHERE e.sid=%d AND event_date BETWEEN %d AND %d
+          $sort_phrase";
+  $result = db_query($sql, $sid,  $game_date, $game_date + 86400);
+  while ($row = db_fetch_object($result)){
+    $list[] = $row;
+  }
+  return $list;
+}
+
 function _get_plm_event($eid) {
   $sql = "SELECT * from {plm_event} WHERE eid=%d";
   return db_fetch_object(db_query($sql, $eid));
@@ -206,13 +223,13 @@ function _get_plm_results($eid){
 }
 
 function _get_plm_results_by_player($pid, $sid=NULL) {
-  $sql = "SELECT s.sid, g.eid, g.title, g.hid, p.name AS host, r.place, r.points, r.cash
+  $sql = "SELECT s.sid, e.eid, e.title, e.hid, p.name AS host, r.place, r.points, r.cash
           FROM {plm_result} r 
-          LEFT JOIN ({plm_event} g LEFT JOIN  {plm_player} p ON g.hid=p.pid) USING (eid)
+          LEFT JOIN ({plm_event} e LEFT JOIN  {plm_player} p ON e.hid=p.pid) USING (eid)
           LEFT JOIN {plm_season} s USING (sid)
           WHERE r.pid=%d ";
-  if ($sid) $sql .= "AND g.sid=%d ";
-  $sql .= "ORDER BY s.start_date, g.event_date";
+  if ($sid) $sql .= "AND e.sid=%d ";
+  $sql .= "ORDER BY s.start_date, e.event_date";
   $result = db_query($sql, $pid, $sid);
   while ($row = db_fetch_object($result)) {
     $res[] = $row;

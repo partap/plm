@@ -32,6 +32,7 @@
 
 require_once drupal_get_path('module', 'plm') .'/plm.inc';
 require_once drupal_get_path('module', 'plm') .'/plm_db.inc';
+require_once drupal_get_path('module', 'plm') .'/plm_file.inc';
 require_once drupal_get_path('module', 'plm') .'/plm_tablesort.inc';
 
 function plm_menu() {
@@ -245,7 +246,15 @@ function plm_menu() {
     'type' => MENU_NORMAL_ITEM,
     'file' => 'plm_admin.inc',
   );
-
+  $items['admin/plm/import'] = array(
+    'title' => t('Import Results'),
+    'description' => 'Import results from spreadsheet',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_import_form'),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'plm_file.inc',
+  );
 /*   $items['admin/plm/seasons'] = array( */
 /*     'title' => t('Seasons'), */
 /*     'description' => 'Manage Seasons', */
@@ -373,7 +382,7 @@ function plm_standings($plm_season) {
     $rank++;
     $rows[] = $rowdata;
   }
-  $caption = $plm_season->title;
+  //$caption = $plm_season->title;
   return $output . _theme_plm_table($header, $rows, $attr, $caption);
   //print theme('page', $content);
 }
@@ -593,8 +602,10 @@ function theme_plm_event_list($season, $teaser) {
       $event->finished ? l(t('results'), "plm/events/$event->eid") : '',
     );
     if (user_access('administer poker league')) {
-      $rowdata[] = l(t('edit'),
-                     "plm/events/$event->eid/edit");
+      if ($event->finished)
+        $rowdata[] = '';
+      else
+        $rowdata[] = l(t('edit'), "plm/events/$event->eid/edit");
     }
     $rows[] = $rowdata;
   }
@@ -703,10 +714,6 @@ function _plm_result_row($result) {
     $result->points,
     '$' . $result->cash,
   );   
-  if (user_access('administer poker league')){
-    $row[] = l(t('edit'), 'plm/results/' 
-               . $result->eid . '/' . $result->place . '/edit');
-  }
   return $row;
 }
 
@@ -739,7 +746,16 @@ function theme_plm_event_results($event) {
     if (!$results[$place]){
       $r = _plm_result_new($eid, $place);
     }
-    $rows[] = _plm_result_row($r);
+    $row = _plm_result_row($r);
+    if (user_access('administer poker league')){
+      if ($event->finished) 
+        $row[] = '';
+      else{
+        $row[] = l(t('edit'), 'plm/results/' 
+                   . $result->eid . '/' . $result->place . '/edit');
+      }
+    }
+    $rows[] = $row;
     $total += $r->cash;
   }
   
@@ -853,5 +869,109 @@ function _theme_plm_table($header, $rows, $attributes = array(), $caption = NULL
   }
 
   $output .= "</table>\n";
+  return $output;
+}
+
+function plm_block($op = 'list', $delta = 0, $edit = array()) {
+  //drupal_set_message("plm_block op=$op delta=$delta edit=" . print_r($edit, TRUE));
+  switch ($op) {
+  case 'list':
+    // If $op is "list", we just need to return a list of block descriptions.
+    // This is used to provide a list of possible blocks to the administrator,
+    // end users will not see these descriptions.
+    // A block can provide default settings.
+    $blocks[0] = array(
+      'info'       => t('PLM Leaderboard'),
+      'cache' => BLOCK_NO_CACHE
+    );
+    
+    return $blocks;
+  case 'configure':
+    // If $op is "configure", we need to provide the administrator with a
+    // configuration form. The $delta parameter tells us which block is being
+    // configured. In this example, we'll allow the administrator to customize
+    // the text of the first block.
+    $form = array();
+    if ($delta == 0) {
+      // All we need to provide is a text field, Drupal will take care of
+      // the other block configuration options and the save button.
+      //$form['block_example_string'] = array(
+      //  '#type' => 'textfield',
+      //  '#title' => t('Block contents'),
+      //  '#size' => 60,
+      //  '#description' => t('This string will appear in the example block.'),
+      //  '#default_value' => variable_get('block_example_string',  t('Some example content.')),
+      //);
+    }
+    return $form;
+  case 'save':
+    // If $op is "save", we need to save settings from the configuration form.
+    // Since the first block is the only one that allows configuration, we
+      // need to check $delta to make sure we only save it.
+      //if ($delta == 0) {
+    // Have Drupal save the string to the database.
+    //  variable_set('block_example_string', $edit['block_example_string']);
+    //}
+    //return;
+  case 'view': default:
+    switch ($delta) {
+    case 0:
+      $block['subject'] = t('Leaderboard');
+      $block['content'] = theme('plm_leaderboard_block');
+      //drupal_set_message('theme_plm_leaderboard_block content:' . print_r($block, TRUE));
+      break;
+    }
+    return $block;
+  }
+}
+
+/**
+ * Implementation of hook_theme()
+ */
+function plm_theme() {
+  //drupal_set_message('plm_theme');  
+  return array(
+    'plm_leaderboard_block' => array(
+      'arguments' => array('plm_season' => NULL),
+    ),
+  );
+}
+
+function theme_plm_leaderboard_block($plm_season=NULL) {
+  //drupal_set_message('theme_plm_leaderboard_block');
+  if ( !isset($plm_season) ) {
+    $plm_season = plm_season_load(variable_get('plm_current_season', 0));
+  }
+  if ( !isset($plm_season) ) {
+    return '<p>No Current Season!</p>';
+  }
+  $header = array(
+    array('data' => t('Rank')),
+    array('data' => t('Name')),
+    array('data' => t('Points')),
+    //array('data' => t('Winnings')),
+    //array('data' => t('Places')),
+  );
+
+  $players = _get_plm_standings($plm_season->sid, 10);
+  if (!$players) {
+    $output .= '<p>No Results Found</p>';
+    return $output;
+  }
+  $rank = 1;
+  foreach ($players as $rec) {
+    $rowdata = array(
+      $rank,      
+      l(t($rec->name), 'plm/players/pid/' . $rec->pid),
+      $rec->points,
+      //$rec->cash ? '$' . $rec->cash : '',
+      //$rec->places ? $rec->places : '',
+    );
+    $rank++;
+    $rows[] = $rowdata;
+  }
+  $caption = $plm_season->title;
+  $output .= theme('table', $header, $rows, $attr, $caption);
+  $output .= l(t('More'), "plm/seasons/$plm_season->sid/standings");
   return $output;
 }
