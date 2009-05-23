@@ -73,8 +73,8 @@ function plm_menu() {
 
   $items['plm/seasons/%plm_season'] = array(
     'title' => t('View Season'),
-/*     'title callback' => 'plm_season_title', */
-/*     'title_arguments' => array(3), */
+    'title callback' => 'plm_season_title', 
+    'title arguments' => array(2), 
     'description' => 'View a poker season',
     'page callback' => 'plm_season_view',
     'page arguments' => array(2),
@@ -334,7 +334,7 @@ function plm_event_access($op, $node, $account) {
 }
 
 function plm_main() {
-  $content .= "<p>Poker League Manager Main Page</p>";
+  //$content .= "<p>Poker League Manager Main Page</p>";
   $items = plm_menu();
   $content .= '<dl class="admin-list">';
   foreach ( $items as $path => $menu ) {
@@ -387,10 +387,10 @@ function plm_standings($plm_season) {
   //print theme('page', $content);
 }
 
-/* function plm_season_title($plm_season) { */
-/*   //print_r('DEBUG: Season: (' . $plm_season . ')'); */
-/*   return $plm_season->title; */
-/* } */
+function plm_season_title($plm_season) { 
+  //drupal_set_message("plm_season_title(" . print_r($plm_season, TRUE) . ")");
+  return $plm_season->title; 
+} 
 
 function plm_player_load($pid) {
   return _get_plm_player($pid);
@@ -553,7 +553,8 @@ function theme_plm_date_range($season, $teaser) {
   $label = 'Starts';
   $now = gmmktime();
   if ($season->start_date < $now) $label = 'Started';
-  $datestr = date('m-d-Y', $season->start_date);
+  $fmt = 'M j Y';
+  $datestr = date($fmt, $season->start_date);
   $output .= t(
     '<div>@label: @datestr</div>', array(
       '@label' => $label, 
@@ -564,7 +565,7 @@ function theme_plm_date_range($season, $teaser) {
   
   $label = 'Ends';
   if ($season->end_date < $now) $label = 'Ended';
-  $datestr = date('m-d-Y', $season->end_date);
+  $datestr = date($fmt, $season->end_date);
   $output .= t(
     '<div>@label: @datestr</div>',
     array(
@@ -652,13 +653,29 @@ function plm_event_view($event, $teaser = FALSE, $page = FALSE) {
 
 function theme_plm_event_details($event) {
   $s = _get_plm_season($event->sid);
-  $output .= theme_plm_event_season($s);
-  $output .= theme_plm_event_date($event);
-  $output .= theme_plm_event_host($event);
+  $label = 'Season';
+  $title = $s->title;
+  $output .= "$label: " . l(t("@title", array('@title'=>$title)),
+                           "plm/seasons/$season->sid");
+  //$output .= theme_plm_event_season($s);
+  $label = 'Event Date';
+  $fmt = 'D, M j Y';
+  $datestr = date($fmt, $event->event_date);
+  $output .= "<div class=\"pl_event_date\">$label: $datestr</div>";
+  //$output .= theme_plm_event_date($event);
+  $label = 'Host';
+  $rec = _get_plm_player($event->hid);
+  $name = $rec->name;
+  if (!$name) $name = 'None';
+  $output .= "<div class=\"event_host\">$label: $name</div>";
+  //$output .= theme_plm_event_host($event);
   if ($event->num_players){
-    $output .= theme_plm_event_num_players($event);
+    $label = 'Entrants';
+    $num_players = $event->num_players;
+    $output = "<div class=\"num_players\">$label: $num_players</div>";
+    //$output .= theme_plm_event_num_players($event);
     //$output .= "<div>Initial Pot: $event->pot_start</div>\n";
-    //$output .= "<div>Buyin: $event->buyin</div>\n";
+    $output .= "<div>Buy-in: $event->buyin</div>\n";
     $pot_total = $event->pot_start + $event->buyin * $event->num_players;
     $output .= "<div>Total Pot: \$$pot_total</div>\n";
     $output .= theme_plm_event_results($event);
@@ -667,7 +684,8 @@ function theme_plm_event_details($event) {
 }
 function theme_plm_event_date($event) {
   $label = 'Event Date';
-  $datestr = date('m-d-Y', $event->event_date);
+  $fmt = 'D, M j Y';
+  $datestr = date($fmt, $event->event_date);
   $output .= "<div class=\"pl_event_date\">$label: $datestr</div>";
   return $output;
 }
@@ -875,53 +893,56 @@ function _theme_plm_table($header, $rows, $attributes = array(), $caption = NULL
 function plm_block($op = 'list', $delta = 0, $edit = array()) {
   //drupal_set_message("plm_block op=$op delta=$delta edit=" . print_r($edit, TRUE));
   switch ($op) {
-  case 'list':
-    // If $op is "list", we just need to return a list of block descriptions.
-    // This is used to provide a list of possible blocks to the administrator,
-    // end users will not see these descriptions.
-    // A block can provide default settings.
-    $blocks[0] = array(
-      'info'       => t('PLM Leaderboard'),
-      'cache' => BLOCK_NO_CACHE
-    );
-    
-    return $blocks;
-  case 'configure':
-    // If $op is "configure", we need to provide the administrator with a
-    // configuration form. The $delta parameter tells us which block is being
-    // configured. In this example, we'll allow the administrator to customize
-    // the text of the first block.
-    $form = array();
-    if ($delta == 0) {
-      // All we need to provide is a text field, Drupal will take care of
-      // the other block configuration options and the save button.
-      //$form['block_example_string'] = array(
-      //  '#type' => 'textfield',
-      //  '#title' => t('Block contents'),
-      //  '#size' => 60,
-      //  '#description' => t('This string will appear in the example block.'),
-      //  '#default_value' => variable_get('block_example_string',  t('Some example content.')),
-      //);
-    }
-    return $form;
-  case 'save':
-    // If $op is "save", we need to save settings from the configuration form.
-    // Since the first block is the only one that allows configuration, we
+    case 'list':
+      // If $op is "list", we just need to return a list of block descriptions.
+      // This is used to provide a list of possible blocks to the administrator,
+      // end users will not see these descriptions.
+      // A block can provide default settings.
+      $blocks[0] = array(
+        'info'       => t('PLM Leaderboard'),
+        'cache' => BLOCK_NO_CACHE
+                         );
+      
+      return $blocks;
+    case 'configure':
+      // If $op is "configure", we need to provide the administrator with a
+      // configuration form. The $delta parameter tells us which block is being
+      // configured. In this example, we'll allow the administrator to customize
+      // the text of the first block.
+      $form = array();
+      if ($delta == 0) {
+        // All we need to provide is a text field, Drupal will take care of
+        // the other block configuration options and the save button.
+        //$form['block_example_string'] = array(
+        //  '#type' => 'textfield',
+        //  '#title' => t('Block contents'),
+        //  '#size' => 60,
+        //  '#description' => t('This string will appear in the example block.'),
+        //  '#default_value' => variable_get('block_example_string',  t('Some example content.')),
+        //);
+      }
+      return $form;
+    case 'save':
+      // If $op is "save", we need to save settings from the configuration form.
+      // Since the first block is the only one that allows configuration, we
       // need to check $delta to make sure we only save it.
       //if ($delta == 0) {
-    // Have Drupal save the string to the database.
-    //  variable_set('block_example_string', $edit['block_example_string']);
-    //}
-    //return;
-  case 'view': default:
-    switch ($delta) {
-    case 0:
-      $block['subject'] = t('Leaderboard');
-      $block['content'] = theme('plm_leaderboard_block');
-      //drupal_set_message('theme_plm_leaderboard_block content:' . print_r($block, TRUE));
-      break;
-    }
-    return $block;
+      // Have Drupal save the string to the database.
+      //  variable_set('block_example_string', $edit['block_example_string']);
+      //}
+      //return;
+    case 'view': default:
+      switch ($delta) {
+        case 0:
+          $block['subject'] = t('Leaderboard');
+          $block['content'] = theme('plm_leaderboard_block');
+          break;
+        case 1:
+          $block['subject'] = t('Latest Results');
+          $block['content'] = theme('plm_results_block');
+          break;
+      }
+      return $block;
   }
 }
 
@@ -932,6 +953,9 @@ function plm_theme() {
   //drupal_set_message('plm_theme');  
   return array(
     'plm_leaderboard_block' => array(
+      'arguments' => array('plm_season' => NULL),
+    ),
+    'plm_results_block' => array(
       'arguments' => array('plm_season' => NULL),
     ),
   );
@@ -972,6 +996,11 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   }
   $caption = $plm_season->title;
   $output .= theme('table', $header, $rows, $attr, $caption);
-  $output .= l(t('More'), "plm/seasons/$plm_season->sid/standings");
+  $output .= l(t('More...'), "plm/seasons/$plm_season->sid/standings");
+  return $output;
+}
+
+function theme_plm_results_block($plm_season=NULL) {
+  
   return $output;
 }

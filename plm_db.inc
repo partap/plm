@@ -66,7 +66,7 @@ function _insert_plm_season($season) {
                     VALUES ('%s', %d, %d)", 
                    $season->title, $season->start_date, $season->end_date);
   if (!$res) return $res;
-  return db_last_insert_id(db_prefix_tables('{plm_season}'), 'eid');
+  return db_last_insert_id(db_prefix_tables('{plm_season}'), 'sid');
   
 }
 function _update_plm_season($season) {

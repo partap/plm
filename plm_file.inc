@@ -93,8 +93,20 @@ function plm_import_form_submit($form, &$form_state)  {
       $dstr = substr($fields[0], 0, $split);
       //$rec->game_date = date($dstr);
       $rec->event_date = strtotime($dstr);
-      $rec->title = substr($fields[0], $split+1);
-      $rec->num_players = $fields[2];
+      $rec->title = trim(substr($fields[0], $split+1));
+      $rec->num_players = trim($fields[2]);
+
+      // season 4 is different format
+      // m/d/yyyy Week X (EOY)
+      if (!$rec->num_players) {
+        $p1 = strpos($rec->title, ' (');
+        if ($p1 > 0) {
+          $p2 = strpos($rec->title, ')', $p1 + 2);
+          $rec->num_players = substr($rec->title, $p1+2, $p2-($p1+2))/2;
+          $rec->title = substr($rec->title, 0, $p1);
+        }
+      }
+      
       continue;
     }
     if (!strncmp($fields[0], 'EOY', 3)){
@@ -105,7 +117,7 @@ function plm_import_form_submit($form, &$form_state)  {
 
     }
     if (!strncmp($fields[0], 'Host', 4)){
-      $rec->hostname = $fields[1];
+      $rec->hostname = trim($fields[1], '. ');
       continue;
     }
     if (!strncmp($fields[0], 'Player', 6)){
@@ -115,7 +127,7 @@ function plm_import_form_submit($form, &$form_state)  {
       $rec->cash[] = NULL;
       continue;
     }
-    $rec->place[$curplace]  = $fields[0];
+    $rec->place[$curplace]  = trim($fields[0], '. ');
     $rec->points[$curplace] = $fields[1];
     $rec->cash[$curplace]   = $fields[2];
     $curplace++;
@@ -138,7 +150,7 @@ function _import_plm_event($rec, $overwrite) {
   $events = _get_plm_events_by_date($rec->sid, $rec->event_date);
   if ($events) {
     // Match this event
-    $found_event = 1;
+    $event_exists = 1;
     $rec->eid = $events[0]->eid;
     //$rec->['event'] = 1;
     if ($overwrite) {
@@ -146,13 +158,13 @@ function _import_plm_event($rec, $overwrite) {
     }
   }
   else {
-    $found_event = 0;
+    $event_exists = 0;
     $rec->eid = _insert_plm_event($rec);
   }
 
   
 
-  $content = "<b>Importing Rec: (found=$found_event, eid=$rec->eid)</b><br>";
+  $content = "<b>Event Rec: (exists=$event_exists, eid=$rec->eid)</b><br>";
 
   $rows[]  = array( 
     array('data' => 'Date', 'header' => 1),
