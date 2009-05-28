@@ -243,10 +243,23 @@ function plm_schema() {
 
 function plm_install() {
   drupal_install_schema('plm');
+  _plm_install_menu();
 }
 
 function plm_uninstall() {
-  db_query("DELETE FROM {node} where type='plm_season'");
-  db_query("DELETE FROM {node} where type='plm_event'");
+//  db_query("DELETE FROM {node} where type='plm_season'");
+//  db_query("DELETE FROM {node} where type='plm_event'");
+  db_query("DELETE FROM {menu_custom} WHERE menu_name = 'plm'");
+  db_query("DELETE FROM {menu_links} WHERE module = 'plm'");
+
   drupal_uninstall_schema('plm');
+}
+
+
+function _plm_install_menu() {
+
+  // Create our menu. See menu.install for an example.
+  $t = get_t();
+  db_query("INSERT INTO {menu_custom} (menu_name, title, description) VALUES ('%s', '%s', '%s')", 'plm', $t('Poker League'), $t('Poker League Menu'));
+
 }

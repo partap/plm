@@ -23,6 +23,13 @@ function plm_import_form(){
       $form['sid']['#options'][$s->sid] = $s->title;
     }
   }
+  $form['newseason'] = array(
+    '#value' => l(t('New'), 'plm/ajax', array(
+                'id' => 'newseason'
+                )),
+    );
+  popups_add_popups(array('#newseason', '#newseason2' => array('width' => '200px')));
+
   $form['buyin'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Buy-In',

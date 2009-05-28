@@ -117,7 +117,12 @@ function plm_season_form(&$form_state, $rec = NULL) {
     '#type'  => 'value',
     '#value' => $sid,
   );
- 
+  if ($sid) {
+    drupal_set_title('Edit Season');
+  }
+  else{
+    drupal_set_title('Create a New Season');
+  }
   $title = $rec->title;
   //if (!isset($title)) $title = variable_get('plm_default_prefix', 'Event ');
   $form['title'] = array(
@@ -293,9 +298,13 @@ function plm_season_delete($sid) {
 }
 
 function plm_player_form(&$form_state, $player=NULL) {
-  if ($player)
+  if ($player){
+    drupal_set_title(t('Edit Player'));
     $form['_player'] = array('#type' => 'value', '#value' => $player);
-  
+  }
+  else{
+    drupal_set_title(t('New Player'));
+  }
   $form['name'] = array(
     '#type' => 'textfield',
     '#title' => 'Player Name',
