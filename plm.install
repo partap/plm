@@ -261,5 +261,38 @@ function _plm_install_menu() {
   // Create our menu. See menu.install for an example.
   $t = get_t();
   db_query("INSERT INTO {menu_custom} (menu_name, title, description) VALUES ('%s', '%s', '%s')", 'plm', $t('Poker League'), $t('Poker League Menu'));
-
+  // Add nav to primary links menu
+  $link = array( 
+    'menu_name' => 'primary-links',
+    'module' => 'plm',
+    'weight' => 1,
+    'link_title' => t('Players'),
+    'link_path' => 'plm/players',
+  );
+  menu_link_save($link);
+  $link = array( 
+    'menu_name' => 'primary-links',
+    'module' => 'plm',
+    'weight' => 1,
+    'link_title' => t('Schedule/Results'),
+    'link_path' =>  'plm/schedule',
+   );
+  menu_link_save($link);
+  $link = array( 
+    'menu_name' => 'primary-links',
+    'module' => 'plm',
+    'weight' => 1,
+    'link_title' => t('Seasons'),
+    'link_path' => 'plm/seasons',
+  );
+  menu_link_save($link);
+  $link = array( 
+    'menu_name' => 'primary-links',
+    'module' => 'plm',
+    'weight' => 1,
+    'link_path' => 'plm/standings',
+    'link_title' =>  t('Standings'),
+  );
+  menu_link_save($link);
+  
 }

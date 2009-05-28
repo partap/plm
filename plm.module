@@ -273,88 +273,13 @@ function plm_menu() {
     'type' => MENU_NORMAL_ITEM,
     'file' => 'plm_file.inc',
   );
-/*   $items['admin/plm/seasons'] = array( */
-/*     'title' => t('Seasons'), */
-/*     'description' => 'Manage Seasons', */
-/*     'page callback' => 'plm_seasons_list', */
-/*     'page arguments' => array(NULL), */
-/*     'access arguments' => array('administer poker league'), */
-/*     'type' => MENU_NORMAL_ITEM, */
-/*     //'file' => 'plm_admin.inc', */
-/*   ); */
-  
-/*   $items['admin/plm/seasons/list'] = array( */
-/*     'title'  => t('List Seasons'), */
-/*     'weight' => -1, */
-/*     'type'   => MENU_DEFAULT_LOCAL_TASK, */
-/*   ); */
-  
-/*   $items['admin/plm/seasons/new'] = array( */
-/*     'title' => t('New Reason'), */
-/*     'page callback' => 'drupal_get_form', */
-/*     'page arguments' => array('plm_season_form'), */
-/*     'access arguments' => array('administer poker league'), */
-/*     'type' => MENU_LOCAL_TASK, */
-/*     'file' => 'plm_admin.inc', */
-/*     'weight' => 0, */
-/*   );  */
-/*   $items['admin/plm/seasons/%sid/edit'] = array( */
-/*     'title' => t('Edit Season'), */
-/*     'page callback' => 'drupal_get_form', */
-/*     'page arguments' => array('plm_season_form',  5), */
-/*     'access arguments' => array('administer poker league'), */
-/*     'type' => MENU_CALLBACK, */
-/*     'file' => 'plm_admin.inc', */
-/*   );  */
-/*   $items['admin/plm/seasons/%sid/delete'] = array( */
-/*     'title' => 'Delete Season', */
-/*     'page callback' => 'drupal_get_form', */
-/*     'page arguments' => array('plm_season_delete_confirm', 3), */
-/*     'access arguments' => array('administer poker league'), */
-/*     'file' => 'plm_admin.inc', */
-/*     'type' => MENU_CALLBACK, */
-/*   ); */
-
 
   return $items;
   
 }
 
 function plm_enable() {
-  // Add nav to primary links menu
-  $link = array( 
-    'menu_name' => 'primary-links',
-    'module' => 'plm',
-    'weight' => 1,
-    'link_title' => t('Players'),
-    'link_path' => 'plm/players',
-  );
-  menu_link_save($link);
-  $link = array( 
-    'menu_name' => 'primary-links',
-    'module' => 'plm',
-    'weight' => 1,
-    'link_title' => t('Schedule/Results'),
-    'link_path' =>  'plm/schedule',
-   );
-  menu_link_save($link);
-  $link = array( 
-    'menu_name' => 'primary-links',
-    'module' => 'plm',
-    'weight' => 1,
-    'link_title' => t('Seasons'),
-    'link_path' => 'plm/seasons',
-  );
-  menu_link_save($link);
-  $link = array( 
-    'menu_name' => 'primary-links',
-    'module' => 'plm',
-    'weight' => 1,
-    'link_path' => 'plm/standings',
-    'link_title' =>  t('Standings'),
-  );
-  menu_link_save($link);
-  
+
 }
 
 function plm_disable() {
@@ -366,7 +291,10 @@ function plm_menu_alter(){
 }
 
 function plm_perm() {
-  return array('access poker league content', 'administer poker league');
+  return array(
+    'access poker league content', 
+    'access poker league member content' , 
+    'administer poker league');
 }
 
 // implementation of hook_access()
@@ -428,9 +356,11 @@ function plm_standings($plm_season=NULL) {
     array('data' => t('Rank')),
     array('data' => t('Name')),
     array('data' => t('Points')),
-    array('data' => t('Winnings')),
     array('data' => t('Places')),
   );
+  if (user_access('access poker league member content')) {
+    $header[] = array('data' => t('Winnings'));
+  }
   $sid = $plm_season->sid;
   $players = _get_plm_standings($sid);
   if (!$players) {
@@ -443,9 +373,11 @@ function plm_standings($plm_season=NULL) {
       $rank,      
       l(t($rec->name), 'plm/players/pid/' . $rec->pid),
       $rec->points,
-      $rec->cash ? '$' . $rec->cash : '',
       $rec->places ? $rec->places : '',
     );
+    if (user_access('access poker league member content')) {
+      $rowdata[] = $rec->cash ? '$' . $rec->cash : '';
+    }
     $rank++;
     $rows[] = $rowdata;
   }
@@ -474,9 +406,13 @@ function plm_players_list() {
     array('data' => t('Name'),     'field' => 'name'   ),
     array('data' => t('Points'),   'field' => 'points', 'sort' => 'desc', 
           'default' => 1),
-    array('data' => t('Winnings'), 'field' => 'cash', 'sort' => 'desc'   ),
     array('data' => t('Places'),   'field' => 'places', 'sort' => 'desc' ),
   );
+
+  // Protect access to cache data
+  if (user_access('access poker league member content')) {
+    $header[] = array('data' => t('Winnings'), 'field' => 'cash', 'sort' => 'desc' );
+  }
   if (user_access('administer poker league')) {
     $header[] = array('data' => t(''), 'colspan' => 2);
   }
@@ -486,10 +422,11 @@ function plm_players_list() {
     $rowdata = array(
       l(t($rec->name), 'plm/players/pid/' . $rec->pid),
       $rec->points,
-      $rec->cash ? '$' . $rec->cash : '',
       $rec->places ? $rec->places : '',
     );
-
+    if (user_access('access poker league member content')) {
+      $rowdata[] = $rec->cash ? '$' . $rec->cash : '';
+    }
     if (user_access('administer poker league')) {
       $rowdata[] = l(t('edit'), 'plm/players/pid/' . $rec->pid . '/edit');
       $rowdata[] = l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete');
@@ -515,8 +452,12 @@ function theme_plm_player_details($player) {
     "Host",
     "Place", 
     "Points",
-    "Winnings",    
   );
+  // Hide cash stats!
+  if (user_access('access poker league member content')) {
+    $header[] = "Winnings";
+  }
+  
   $places = _get_plm_results_by_player($player->pid);
   $sid    = NULL;
   $s_points   = array();
@@ -527,26 +468,35 @@ function theme_plm_player_details($player) {
   foreach ($places as $r) {
     // Season Totals
     if ($sid && $sid != $r->sid){
+      $rowdata = array(
+        array('data' => t("Season $sid Total:"), 'colspan' => 4, 'header' => 1),
+        array('data' => $s_points[$sid],'header' => 1), 
+      );
+
+      // Hide cash stats!
+      if (user_access('access poker league member content')) {
+        $rowdata[] =  array('data' => '$' . $s_cash[$sid],'header' => 1);
+      }
+
       $rows[] = array(
         'class' => 'subtot',
-        'data' => array(
-          array('data' => t("Season $sid Total:"), 'colspan' => 4, 'header' => 1),
-          array('data' => $s_points[$sid],'header' => 1), 
-          array('data' => '$' . $s_cash[$sid],'header' => 1),
-        ),
+        'data' => $rowdata,
       );
       $tot_points += $s_points[$sid];
       $tot_cash   += $s_cash[$sid];
     }
-
+    
     $rowdata = array(
       $r->sid,
       l($r->title, "plm/events/$r->eid"), 
       $r->host,
       _plm_format_place($r->place),
       $r->points,
-      '$' . $r->cash,      
     );
+    // Hide cash stats!
+    if (user_access('access poker league member content')) {
+      $rowdata[] =  '$' . $r->cash;
+    }
     $rows[] = $rowdata;
     
     $sid       = $r->sid;
@@ -555,26 +505,37 @@ function theme_plm_player_details($player) {
   }
   // Last Season Total
   if ($sid){
-      $rows[] = array(
-        'class' => 'subtot',
-        'data' => array(
-          array('data' => t("Season $sid Total:"), 'colspan' => 4, 'header' => 1),
-          array('data' => $s_points[$sid],'header' => 1), 
-          array('data' => '$' . $s_cash[$sid],'header' => 1),
-        ),
-      );
+    $rowdata = array(
+      array('data' => t("Season $sid Total:"), 'colspan' => 4, 'header' => 1),
+      array('data' => $s_points[$sid],'header' => 1), 
+    );
+    
+    // Hide cash stats!
+    if (user_access('access poker league member content')) {
+      $rowdata[] =  array('data' => '$' . $s_cash[$sid],'header' => 1);
+    }
+    
+    $rows[] = array(
+      'class' => 'subtot',
+      'data' => $rowdata,
+    );
     $tot_points += $s_points[$sid];
     $tot_cash   += $s_cash[$sid];
   }
   // Grand Total
+  $rowdata = array(
+    array('data' => t("Grand Total:"), 'colspan' => 4, 'header' => 1),
+    array('data' => $tot_points, 'header' => 1),
+  );
+  if (user_access('access poker league member content')) {
+    $rowdata[] = array('data' => '$' . $tot_cash, 'header' => 1);
+  }
+  
   $rows[] = array(
     'class' => 'last',
-    'data' => array(
-      array('data' => t("Grand Total:"), 'colspan' => 4, 'header' => 1),
-      array('data' => $tot_points, 'header' => 1),
-      array('data' => '$' . $tot_cash, 'header' => 1),
-    )
+    'data' => $rowdata,
   );
+  
   
   $output .= theme('table', $header, $rows);
   return $output;
@@ -807,8 +768,12 @@ function _plm_result_row($result) {
     _plm_format_place($result->place),
     l(t($result->name), 'plm/players/pid/' . $result->pid),
     $result->points,
-    '$' . $result->cash,
-  );   
+  );
+  // Hide cash stats!
+  if (user_access('access poker league member content')) {
+    $row[] = '$' . $result->cash;
+  }
+  
   return $row;
 }
 
@@ -821,8 +786,12 @@ function theme_plm_event_results($event) {
     return '<p>No Results Posted</p>';
   }
   $header = array(
-    'Place', 'Player', 'Points', '$$$',
+    'Place', 'Player', 'Points', 
   );
+  // Hide cash stats!
+  if (user_access('access poker league member content')) {
+    $header[] = '$$$';
+  }
   if (user_access('administer poker league')){
     //$header[] = 'Operation';
     $header[] = '';
@@ -857,7 +826,9 @@ function theme_plm_event_results($event) {
   $expected_pot_total = $event->pot_start + $event->buyin * $event->num_players;
   $rem = $expected_pot_total - $total;
 
-  if ($rem) {
+  // make sure the payouts add up,
+  // but if we don't have access to cash stats, skip it
+  if ($rem && user_access('access poker league member content')) {
     $pre = '$';
     if ($rem > 0) $style = 'color: #006600';
     else {
