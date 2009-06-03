@@ -402,16 +402,26 @@ function plm_players_list() {
   $num_players = _get_num_plm_players();
   $output .= format_plural($num_players, '1 Player', '@count Players');
 
+  // override theme table's parameters 
+  // so points, places and winnings sort in descending order
+  if (isset($_GET['order'])){
+    if ($_GET['order'] == 'Points')   $_GET['sort'] = 'desc';
+    if ($_GET['order'] == 'Places')   $_GET['sort'] = 'desc';
+    if ($_GET['order'] == 'Winnings') $_GET['sort'] = 'desc';
+  }
+  else{ // make default sort column active
+    $_GET['order'] = 'Name';
+    $_GET['sort'] = 'asc';
+  }
   $header = array(
-    array('data' => t('Name'),     'field' => 'name'   ),
-    array('data' => t('Points'),   'field' => 'points', 'sort' => 'desc', 
-          'default' => 1),
-    array('data' => t('Places'),   'field' => 'places', 'sort' => 'desc' ),
+    array('data' => t('Name'),     'field' => 'name', 'sort' => 'asc' ),
+    array('data' => t('Points'),   'field' => 'points'),
+    array('data' => t('Places'),   'field' => 'places'),
   );
 
-  // Protect access to cache data
+  // Hide cash stats!
   if (user_access('access poker league member content')) {
-    $header[] = array('data' => t('Winnings'), 'field' => 'cash', 'sort' => 'desc' );
+    $header[] = array('data' => t('Winnings'), 'field' => 'cash' );
   }
   if (user_access('administer poker league')) {
     $header[] = array('data' => t(''), 'colspan' => 2);
@@ -434,8 +444,8 @@ function plm_players_list() {
     $rows[] = $rowdata;
   }
 
-  //return $output . theme('plm_table', $header, $rows);
-  return $output . _theme_plm_table($header, $rows);
+  return $output . theme('table', $header, $rows);
+  //return $output . _theme_plm_table($header, $rows);
 }
 
 function plm_player_view($player) {
