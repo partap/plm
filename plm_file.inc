@@ -1,5 +1,6 @@
 <?php
 function plm_import_form(){
+  popups_add_popups();
 
   $form['#attributes'] = array('enctype' => "multipart/form-data");
   $form['import_file'] = array(
@@ -24,12 +25,16 @@ function plm_import_form(){
     }
   }
   $form['newseason'] = array(
-    '#value' => l(t('New'), 'plm/ajax', array(
-                'id' => 'newseason'
-                )),
-    );
-  popups_add_popups(array('#newseason', '#newseason2' => array('width' => '200px')));
+    '#value' => l(t('Create Season'), 'plm/seasons/new', 
+              array('attributes' => array('class' => 'popups-form'))),
+  );
 
+  // popups_add_popups(array( 
+  //     '#newseason' => array(
+  //       'width' => '600px',
+  //       'targetSelectors' => '#edit-sid'
+  //     )));
+  
   $form['buyin'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Buy-In',
@@ -42,6 +47,13 @@ function plm_import_form(){
     '#type' => 'checkbox', 
     '#title' => t('Overwrite existing'),
     '#description' => 'If imported data matches an existing result, overwrite it.',
+    '#default_value' => FALSE,
+  );
+
+  $form['compress_tabs'] = array(
+    '#type' => 'checkbox', 
+    '#title' => t('Compress TABs'),
+    '#description' => 'Count multiple TABs as a single TAB character (dirty data file).',
     '#default_value' => FALSE,
   );
   
@@ -60,6 +72,7 @@ function plm_import_form_validate($form, &$form_state) {
 }
 function plm_import_form_submit($form, &$form_state)  {
   $overwrite = $form_state['values']['overwrite'];
+  $compress_tabs = $form_state['values']['compress_tabs'];
   $sid = $form_state['values']['sid'];
   $buyin = $form_state['values']['buyin'];
   $file = file_save_upload('import_file');
@@ -78,10 +91,15 @@ function plm_import_form_submit($form, &$form_state)  {
     //drupal_set_message('<pre>' . print_r($line, TRUE) . '</pre>');
     $linenum++;
     $line = trim($line);
+    if ($compress_tabs)
+      $line = preg_replace('/\t+/',"\t",$line);
     if (!strlen($line)) {
       // empty line...between records
       if ($rec) {
         //drupal_set_message("<b>rec</b><br><pre>" . print_r($rec, TRUE) . "</pre>");
+        if (!$rec->num_players) {
+          $rec->num_players = $rec->cash_total / $rec->buyin;
+        }
         $rec->finished = 1;
         _import_plm_event($rec, $overwrite);
         $rec = NULL;
@@ -90,29 +108,55 @@ function plm_import_form_submit($form, &$form_state)  {
       continue;
     }
     $fields = explode("\t", $line);
-    //drupal_set_message(
-    //  '<pre> (' . count($fields) . ') '.print_r(implode('[TAB]', $fields), TRUE) . '</pre>');
+    drupal_set_message(
+      '<pre> (' . count($fields) . ' fields) '
+      . print_r(implode('[TAB]', $fields), TRUE) . '</pre>');
     if (!$rec) {
       $rec = new stdClass;
       $rec->sid   = $sid;
       $rec->buyin = $buyin;
       $split = strpos($fields[0], ' ');
-      $dstr = substr($fields[0], 0, $split);
-      //$rec->game_date = date($dstr);
+      if (!$split) $dstr = $fields[0];
+      else $dstr = substr($fields[0], 0, $split);
+      //drupal_set_message("<p>fields[0]:".$fields[0]." split: $split</p>");
       $rec->event_date = strtotime($dstr);
-      $rec->title = trim(substr($fields[0], $split+1));
-      $rec->num_players = trim($fields[2]);
-
-      // season 4 is different format
-      // m/d/yyyy Week X (EOY)
+      if ($split) {
+        $rec->title = trim(substr($fields[0], $split+1));
+        $rec->num_players = trim($fields[2]);
+      }
+      else{
+        $rec->title = '';
+        $rec->num_players = 0;
+      }
+      $rec->cash_total = 0;
+      
+      if (isset($rec->event_date) && !isset($first_event_date)){
+        $first_event_date = $rec->event_date;
+        //drupal_set_message("<p>First_event_date: $first_event_date ($dstr) </p>");
+      }
       if (!$rec->num_players) {
-        $p1 = strpos($rec->title, ' (');
-        if ($p1 > 0) {
-          $p2 = strpos($rec->title, ')', $p1 + 2);
-          $rec->num_players = substr($rec->title, $p1+2, $p2-($p1+2))/2;
-          $rec->title = substr($rec->title, 0, $p1);
+        $p1 = strpos($rec->title, '(');
+        drupal_set_message("<p>p1=$p1 title=$rec->title</p>");
+        if (($p1 >0 || $p1 === 0)) {
+          $p2 = strpos($rec->title, ')', $p1 + 1);
+          $rec->num_players = substr($rec->title, $p1+1, $p2-($p1+1))/2;
+          // season 3,4:
+          // m/d/yyyy Week X (EOY)
+          if ($p1 > 1)
+            $rec->title = trim(substr($rec->title, 0, $p1));
+          // Season 2:
+          // m/d/yyyy (EOY)
+          // Compute title below
+          else $rec->title = '';
         }
       }
+      // season 1:
+      // m/d/yyyy
+      if (!strlen($rec->title)){
+        $weeks = (int) (($rec->event_date - $first_event_date) / (86400 * 7.0) + 0.5);
+        $rec->title = sprintf("Week %d", $weeks+1);
+      }
+
       
       continue;
     }
@@ -135,8 +179,9 @@ function plm_import_form_submit($form, &$form_state)  {
       continue;
     }
     $rec->place[$curplace]  = trim($fields[0], '. ');
-    $rec->points[$curplace] = $fields[1];
-    $rec->cash[$curplace]   = $fields[2];
+    $rec->points[$curplace] = trim($fields[1]);
+    $rec->cash[$curplace]   = trim($fields[2]);
+    $rec->cash_total       += $rec->cash[$curplace];
     $curplace++;
   }
 
@@ -193,7 +238,7 @@ function _import_plm_event($rec, $overwrite) {
   );
 
   // Import results and add new players, if necessary
-  for ($i=1; $i<=5 ; $i++) {
+  for ($i=1; isset($rec->place[$i]) ; $i++) {
     $player = _get_plm_player_by_name($rec->place[$i]);
     if (!$player) {
       $player = new stdClass;

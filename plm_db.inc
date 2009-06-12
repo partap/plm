@@ -18,7 +18,11 @@ function _get_plm_player_by_name($name) {
 
 function _get_plm_players($sort_phrase, $where_phrase = '') {
   if (!$sort_phrase) $sort_phrase = "ORDER BY name";
-  $sql = "SELECT p.pid, p.name, SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid " . $where_phrase . "GROUP BY p.pid, p.name " . $sort_phrase . " NULLS LAST"; 
+  $sql = "SELECT p.pid, p.name, 
+          SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places,
+          SUM(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins
+          FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid " 
+          . $where_phrase . "GROUP BY p.pid, p.name " . $sort_phrase . " NULLS LAST"; 
   $result = db_query($sql);
   $list = array();
   while ($row = db_fetch_object($result)){
@@ -27,7 +31,7 @@ function _get_plm_players($sort_phrase, $where_phrase = '') {
   return $list;
 }
 
-function _get_plm_standings($sid, $limit = NULL) {
+function _get_plm_rankings($sid, $limit = NULL) {
   $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name NULLS LAST";
   if ($limit) $sort_phrase .= " LIMIT $limit";
   $sql = "SELECT p.pid, p.name, e.sid,
@@ -129,10 +133,12 @@ function _get_plm_events($sid, $sort_phrase=NULL) {
   if (!$sort_phrase) $sort_phrase='ORDER BY e.event_date';
   
   $sql = "SELECT e.eid, e.title, p.name as host, e.event_date, e.hid, 
-            e.num_players, e.finished
+            e.num_players, r.pid AS wid, p2.name AS winner, e.finished
           FROM {plm_event} e 
           LEFT JOIN {plm_player} p ON p.pid=e.hid 
-          WHERE e.sid=%d
+          LEFT JOIN {plm_result} r ON e.eid=r.eid
+          LEFT JOIN {plm_player} p2 ON r.pid=p2.pid
+          WHERE e.sid=%d AND (r IS NULL OR r.place=1)
           $sort_phrase";
   $result = db_query($sql, $sid);
   while ($row = db_fetch_object($result)){
@@ -162,8 +168,9 @@ function _get_plm_event($eid) {
   return db_fetch_object(db_query($sql, $eid));
 }
 function _get_latest_plm_event($sid) {
-    $latest_events = _get_plm_events($sid, "ORDER BY event_date LIMIT 1");
-    return $latest_events[0];
+  $latest_events = _get_plm_events($sid, 
+                   "AND e.finished != 0 ORDER BY event_date DESC LIMIT 1");
+  return $latest_events[0];
 }
 function _get_plm_event_by_title($title, $sid) {
   $sql = "SELECT * from {plm_event} WHERE title=lower('%s') and sid=%d";

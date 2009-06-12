@@ -17,16 +17,22 @@
  *       we have sid and so we can either rewrite breadcrumbs,
  *       or use a custom seasons browsing menu or selector...investigate ?destination=xxx...
  *   - Schedule (upcoming games)
- *   - Current Standings
+ *   - Current Rankings
 
  * - Handle final table  - Accumulate rakes?
  * - Publish game results when done (custom node type?)
  *   - send email to list
  *   - Allow comments, messages to admin
  * - Permissions
- *   - Hide money stats from non-verified users
+ *   -XXX Hide money stats from non-verified users
  *   - Tie user accounts to player ids
+ *   - require password for deleting seasons/players (popup?)
  * - Theming (make it purty)
+ * - pulldown select/autocomplete for player names
+ * - popups for creating referenced recs on the fly.  
+ *     eg. import data or new game (create season), 
+ *         results (create player)
+ *
  */
 
 
@@ -105,10 +111,10 @@ function plm_menu() {
     'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
   ); 
-  $items['plm/seasons/%plm_season/standings'] = array(
-    'title' => t('Standings'),
-    'description' => 'View the current standings for this season.',
-    'page callback' => 'plm_standings',
+  $items['plm/seasons/%plm_season/rankings'] = array(
+    'title' => t('Rankings'),
+    'description' => 'View the current rankings for this season.',
+    'page callback' => 'plm_rankings',
     'page arguments' => array(2),
     'access arguments' => array('access poker league content'),
     'type' => MENU_LOCAL_TASK,
@@ -220,10 +226,10 @@ function plm_menu() {
     'type' => MENU_CALLBACK,
     'file' => 'plm_admin.inc',
   );
-  $items['plm/standings'] = array(
-    'title' => t('Standings'),
-    'description' => 'View the current standings for this season.',
-    'page callback' => 'plm_standings',
+  $items['plm/rankings'] = array(
+    'title' => t('Rankings'),
+    'description' => 'View the current rankings for this season.',
+    'page callback' => 'plm_rankings',
     'access arguments' => array('access poker league content'),
     'type' => MENU_NORMAL_ITEM,
     'weight' => 3,
@@ -341,7 +347,7 @@ function plm_main() {
 
 }
 
-function plm_standings($plm_season=NULL) {
+function plm_rankings($plm_season=NULL) {
   if (!isset($plm_season)){
     $sid=variable_get('plm_current_season', 0);
     $plm_season = _get_plm_season($sid);
@@ -350,7 +356,7 @@ function plm_standings($plm_season=NULL) {
     $output = '<p>No Season Selected<p>';
     return $output;
   }  
-  drupal_set_title("$plm_season->title Standings");
+  drupal_set_title("$plm_season->title Rankings");
   
   $header = array(
     array('data' => t('Rank')),
@@ -362,7 +368,7 @@ function plm_standings($plm_season=NULL) {
     $header[] = array('data' => t('Winnings'));
   }
   $sid = $plm_season->sid;
-  $players = _get_plm_standings($sid);
+  $players = _get_plm_rankings($sid);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
     return $output;
@@ -405,18 +411,27 @@ function plm_players_list() {
   // override theme table's parameters 
   // so points, places and winnings sort in descending order
   if (isset($_GET['order'])){
-    if ($_GET['order'] == 'Points')   $_GET['sort'] = 'desc';
+    if ($_GET['order'] == 'Wins')     $_GET['sort'] = 'desc';
     if ($_GET['order'] == 'Places')   $_GET['sort'] = 'desc';
+    if ($_GET['order'] == 'Points')   $_GET['sort'] = 'desc';
     if ($_GET['order'] == 'Winnings') $_GET['sort'] = 'desc';
   }
-  else{ // make default sort column active
-    $_GET['order'] = 'Name';
-    $_GET['sort'] = 'asc';
+  // make default sort column active
+  // default sorted by winnings if logged in
+  else if (user_access('access poker league member content')) {
+    $_GET['order'] = 'Winnings';
+    $_GET['sort'] = 'desc';
+  }
+  // default sort by points otherwise
+  else {
+    $_GET['order'] = 'Points';
+    $_GET['sort'] = 'desc';
   }
   $header = array(
     array('data' => t('Name'),     'field' => 'name', 'sort' => 'asc' ),
-    array('data' => t('Points'),   'field' => 'points'),
+    array('data' => t('Wins'),     'field' => 'wins'),
     array('data' => t('Places'),   'field' => 'places'),
+    array('data' => t('Points'),   'field' => 'points'),
   );
 
   // Hide cash stats!
@@ -430,13 +445,15 @@ function plm_players_list() {
 
   foreach ($players as $rec) {
     $rowdata = array(
-      l(t($rec->name), 'plm/players/pid/' . $rec->pid),
+      //l('"'. $rec->name . '"', 'plm/players/pid/' . $rec->pid),
+      l($rec->name, 'plm/players/pid/' . $rec->pid),
+      $rec->wins,
+      $rec->places ? $rec->places : '0',
       $rec->points,
-      $rec->places ? $rec->places : '',
     );
+  // Hide cash stats!
     if (user_access('access poker league member content')) {
-      $rowdata[] = $rec->cash ? '$' . $rec->cash : '';
-    }
+      $rowdata[] = $rec->cash ? '$' . $rec->cash : '';    }
     if (user_access('administer poker league')) {
       $rowdata[] = l(t('edit'), 'plm/players/pid/' . $rec->pid . '/edit');
       $rowdata[] = l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete');
@@ -469,6 +486,7 @@ function theme_plm_player_details($player) {
   }
   
   $places = _get_plm_results_by_player($player->pid);
+  if (!isset($places)) return '<p>No places on record.</p>';
   $sid    = NULL;
   $s_points   = array();
   $s_cash     = array();
@@ -477,15 +495,18 @@ function theme_plm_player_details($player) {
 
   foreach ($places as $r) {
     // Season Totals
+    if ($sid != $r->sid){
+      $s = plm_season_load($r->sid);
+    }
     if ($sid && $sid != $r->sid){
       $rowdata = array(
-        array('data' => t("Season $sid Total:"), 'colspan' => 4, 'header' => 1),
-        array('data' => $s_points[$sid],'header' => 1), 
+        array('data' => t("$s->title Total"), 'colspan' => 4, 'header' => 1),
+        array('data' => $s_points[$sid]), 
       );
 
       // Hide cash stats!
       if (user_access('access poker league member content')) {
-        $rowdata[] =  array('data' => '$' . $s_cash[$sid],'header' => 1);
+        $rowdata[] =  array('data' => '$' . $s_cash[$sid]);
       }
 
       $rows[] = array(
@@ -497,7 +518,8 @@ function theme_plm_player_details($player) {
     }
     
     $rowdata = array(
-      $r->sid,
+      $s->title,
+      //$r->sid,
       l($r->title, "plm/events/$r->eid"), 
       $r->host,
       _plm_format_place($r->place),
@@ -516,13 +538,13 @@ function theme_plm_player_details($player) {
   // Last Season Total
   if ($sid){
     $rowdata = array(
-      array('data' => t("Season $sid Total:"), 'colspan' => 4, 'header' => 1),
-      array('data' => $s_points[$sid],'header' => 1), 
+      array('data' => t("$s->title Total"), 'colspan' => 4, 'header' => 1),
+      array('data' => $s_points[$sid]), 
     );
     
     // Hide cash stats!
     if (user_access('access poker league member content')) {
-      $rowdata[] =  array('data' => '$' . $s_cash[$sid],'header' => 1);
+      $rowdata[] =  array('data' => '$' . $s_cash[$sid]);
     }
     
     $rows[] = array(
@@ -534,15 +556,15 @@ function theme_plm_player_details($player) {
   }
   // Grand Total
   $rowdata = array(
-    array('data' => t("Grand Total:"), 'colspan' => 4, 'header' => 1),
-    array('data' => $tot_points, 'header' => 1),
+    array('data' => t("Grand Total"), 'colspan' => 4, 'header' => 1),
+    array('data' => $tot_points),
   );
   if (user_access('access poker league member content')) {
-    $rowdata[] = array('data' => '$' . $tot_cash, 'header' => 1);
+    $rowdata[] = array('data' => '$' . $tot_cash);
   }
   
   $rows[] = array(
-    'class' => 'last',
+    'class' => 'subtot last',
     'data' => $rowdata,
   );
   
@@ -629,7 +651,7 @@ function theme_plm_date_range($season, $teaser) {
 function theme_plm_event_list($season, $teaser) {
   //$output = '<p>"theme_plm_event_list"</p>';
 
-  $header = array('Event', 'Date', 'Host', 'Entrants', '');
+  $header = array('Event', 'Date', 'Host', 'Entrants', 'Winner', '');
   if (user_access('administer poker league')) {
     $header[] = '';
   }
@@ -643,11 +665,12 @@ function theme_plm_event_list($season, $teaser) {
     //$date_str = date("D, M j Y g:iA", $event->event_date);
     $date_str = date("D, M j Y", $event->event_date);
     $rowdata = array(
-      l(t($event->title), "plm/events/$event->eid"),
+      l($event->title, "plm/events/$event->eid"),
       $date_str,
       $event->host,
       $event->num_players ? $event->num_players : '',
-      $event->finished ? l(t('results'), "plm/events/$event->eid") : '',
+      $event->wid ? l($event->winner, "plm/players/pid/$event->wid") : '',
+      $event->finished ? l(t('full results'), "plm/events/$event->eid") : '',
     );
     if (user_access('administer poker league')) {
       if ($event->finished)
@@ -699,8 +722,12 @@ function plm_event_view($event, $teaser = FALSE, $page = FALSE) {
   return $output;
 }
 
-function theme_plm_event_details($event) {
-  $s = _get_plm_season($event->sid);
+function theme_plm_event_details($event, $season=NULL) {
+  if (isset($season) && $season->sid == $event->sid) 
+    $s = $season;
+  else 
+    $s = _get_plm_season($event->sid);
+
   $label = 'Season';
   $title = $s->title;
   $output .= "$label: " . l(t("@title", array('@title'=>$title)),
@@ -720,12 +747,14 @@ function theme_plm_event_details($event) {
   if ($event->num_players){
     $label = 'Entrants';
     $num_players = $event->num_players;
-    $output = "<div class=\"num_players\">$label: $num_players</div>";
+    $output .= "<div class=\"num_players\">$label: $num_players</div>";
     //$output .= theme_plm_event_num_players($event);
-    //$output .= "<div>Initial Pot: $event->pot_start</div>\n";
-    $output .= "<div>Buy-in: $event->buyin</div>\n";
-    $pot_total = $event->pot_start + $event->buyin * $event->num_players;
-    $output .= "<div>Total Pot: \$$pot_total</div>\n";
+    if (user_access('access poker league member content')) {
+      $output .= "<div>Initial Pot: $event->pot_start</div>\n";
+      $output .= "<div>Buy-in: \$$event->buyin</div>\n";
+      $pot_total = $event->pot_start + $event->buyin * $event->num_players;
+      $output .= "<div>Total Pot: \$$pot_total</div>\n";
+    }
     $output .= theme_plm_event_results($event);
   }
   return $output;
@@ -765,11 +794,11 @@ function plm_result_load($eid, $place) {
   return $res;
 }
 // blank event result
-function _plm_result_new($eid, $place) {
-  $res->eid = $eid;
+function _plm_result_new($event, $place) {
+  $res->eid = $event->eid;
   $res->place  = $place;
-  $res->points = _plm_rules_default_points($eid, $place);
-  $res->cash   = _plm_rules_default_payout($eid, $place);
+  $res->points = _plm_rules_default_points($event, $place);
+  $res->cash   = _plm_rules_default_payout($event, $place);
   return $res;
 }
 
@@ -805,35 +834,38 @@ function theme_plm_event_results($event) {
   if (user_access('administer poker league')){
     //$header[] = 'Operation';
     $header[] = '';
+    popups_add_popups();
   }
 
   $num_places = $event->num_players;
-  if ($num_places > 5) $num_places = 5;
-
+  //if ($num_places > 5) $num_places = 5;
+  if ($event->finished) $num_places = count($results);
   // Add up total prizepool
   $total = 0;
 
+  $expected_pot_total = $event->pot_start + $event->buyin * $event->num_players;
   // Format results in table
   for ($place=1;$place<=$num_places;$place++){
     $r = $results[$place];
     // display blank result for admin if not set
-    if (!$results[$place]){
-      $r = _plm_result_new($eid, $place);
+    if (!$r){
+      if ($total >= $expected_pot_total) continue;
+      $r = _plm_result_new($event, $place);
     }
     $row = _plm_result_row($r);
     if (user_access('administer poker league')){
       if ($event->finished) 
         $row[] = '';
       else{
-        $row[] = l(t('edit'), 'plm/results/' 
-                   . $result->eid . '/' . $result->place . '/edit');
+        $row[] = l(t('edit'), 
+                 "plm/results/$r->eid/$r->place/edit",
+                 array('attributes' => array('class' => 'popups-form')));
       }
     }
     $rows[] = $row;
     $total += $r->cash;
   }
   
-  $expected_pot_total = $event->pot_start + $event->buyin * $event->num_players;
   $rem = $expected_pot_total - $total;
 
   // make sure the payouts add up,
@@ -851,9 +883,11 @@ function theme_plm_event_results($event) {
     $lastrow = array(
       array('data' => 'Pot Remaining', 'header' => 1, 'colspan' => 3),
       array('data' => $pre . $rem . $post, 'style' => $style),
-      array('data' => ''),
     );
-    $rows[] = $lastrow;
+    if (user_access('administer poker league')){
+      $lastrow[] = array('data' => '');
+    }
+    $rows[] = array('class' => 'subtot', 'data' => $lastrow);
   }
     
   if ($event->finished) {
@@ -956,11 +990,17 @@ function plm_block($op = 'list', $delta = 0, $edit = array()) {
       // This is used to provide a list of possible blocks to the administrator,
       // end users will not see these descriptions.
       // A block can provide default settings.
-      $blocks[0] = array(
-        'info'       => t('PLM Leaderboard'),
-        'cache' => BLOCK_NO_CACHE
-                         );
-      
+      $blocks = array(
+        array(
+          'info'       => t('PLM Leaderboard'),
+          'cache' => BLOCK_NO_CACHE
+        ),
+        array(
+          'info'       => t('PLM Results'),
+          'cache' => BLOCK_NO_CACHE
+        ),
+      );
+        
       return $blocks;
     case 'configure':
       // If $op is "configure", we need to provide the administrator with a
@@ -1014,7 +1054,7 @@ function plm_theme($existing, $type, $theme, $path) {
       'arguments' => array('plm_season' => NULL),
     ),
     'plm_results_block' => array(
-      'arguments' => array('plm_season' => NULL),
+      'arguments' => array('plm_season' => NULL, 'plm_event' => NULL),
     ),
     'plm_nav_menu' => array(
       'arguments' => array('tree' => NULL),
@@ -1038,7 +1078,7 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
     //array('data' => t('Places')),
   );
 
-  $players = _get_plm_standings($plm_season->sid, 10);
+  $players = _get_plm_rankings($plm_season->sid, 10);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
     return $output;
@@ -1056,13 +1096,49 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
     $rows[] = $rowdata;
   }
   //$caption = $plm_season->title;
+  $attr = array('class' => 'compact-table');
   $output .= theme('table', $header, $rows, $attr, $caption);
-  $output .= l(t('More...'), "plm/seasons/$plm_season->sid/standings");
+  $output .= l(t('More...'), "plm/seasons/$plm_season->sid/rankings");
   return $output;
 }
 
-function theme_plm_results_block($plm_season=NULL) {
+function theme_plm_results_block($plm_season=NULL, $event=NULL) {
+  if (!isset($event)) {
+    if (!isset($plm_season)) 
+      //$plm_season = _get_plm_season(variable_get('plm_current_season', 0));
+      $sid = variable_get('plm_current_season', 0);
+    else 
+      $sid = $plm_season;
+    if (!$sid) return '';
+    $event = _get_latest_plm_event($sid);
+    if (!isset($event)) return '';
+  }
+  $results = _get_plm_results($event->eid);
+  if (!isset($results)) return '';
+
+  $output = "<div class=\"plm-event-info\">";
   
+  $fmt = 'D, M j Y';
+  $datestr = format_date($event->event_date, 'custom', $fmt);
+
+  $output .= '<div><h3>' . l($event->title, "plm/events/$event->eid") . '</h3></div>';
+  $output .= "<div>$datestr</div>";
+  $output .= "<div>Host: " . l($event->host, 'plm/players/pid/' . $event->hid) . "</div>";
+  $output .= "<div>$event->num_players Players</div>";
+  $output .= "</div>";
+  
+  foreach ($results as $r) {
+    $rowdata = array( 
+      _plm_format_place($r->place),
+      l($r->name, 'plm/players/pid/' . $r->pid)
+    );
+    if (user_access('access poker league member content')) {
+      $rowdata[] = '$' . $r->cash;
+    }
+    $rows[] = $rowdata;
+  }
+  $attr = array('class' => 'compact-table');
+  $output .= theme("table", NULL, $rows, $attr);
   return $output;
 }
 

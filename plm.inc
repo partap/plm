@@ -26,7 +26,7 @@ function _plm_rules_default_buyin($sid) {
 
 // Default point distribution for a event 
 // Could be dependent on ruleset for season, etc, but hardcoded for now
-function _plm_rules_default_points($gid, $place) {
+function _plm_rules_default_points($event, $place) {
   switch ($place){
   case 1:
     return 10;
@@ -44,8 +44,7 @@ function _plm_rules_default_points($gid, $place) {
 }
 
 
-function _plm_rules_default_payout($gid, $place) {
-  $event = _get_plm_event($gid);
+function _plm_rules_default_payout($event, $place) {
   $num_players = $event->num_players;
   $buyin = $event->buyin;
   $pot_total  = $event->pot_start + $num_players*$buyin;

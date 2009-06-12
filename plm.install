@@ -247,8 +247,6 @@ function plm_install() {
 }
 
 function plm_uninstall() {
-//  db_query("DELETE FROM {node} where type='plm_season'");
-//  db_query("DELETE FROM {node} where type='plm_event'");
   db_query("DELETE FROM {menu_custom} WHERE menu_name = 'plm'");
   db_query("DELETE FROM {menu_links} WHERE module = 'plm'");
 
@@ -260,7 +258,7 @@ function _plm_install_menu() {
 
   // Create our menu. See menu.install for an example.
   $t = get_t();
-  db_query("INSERT INTO {menu_custom} (menu_name, title, description) VALUES ('%s', '%s', '%s')", 'plm', $t('Poker League'), $t('Poker League Menu'));
+  db_query("INSERT INTO {menu_custom} (menu_name, title, description) VALUES ('%s', '%s', '%s')", 'plm', $t('Poker League'), $t('Poker League (PLM) Menu'));
   // Add nav to primary links menu
   $link = array( 
     'menu_name' => 'primary-links',
@@ -290,8 +288,8 @@ function _plm_install_menu() {
     'menu_name' => 'primary-links',
     'module' => 'plm',
     'weight' => 1,
-    'link_path' => 'plm/standings',
-    'link_title' =>  t('Standings'),
+    'link_path' => 'plm/rankings',
+    'link_title' =>  t('Rankings'),
   );
   menu_link_save($link);
   

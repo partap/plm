@@ -164,7 +164,7 @@ function plm_season_form(&$form_state, $rec = NULL) {
 
   $form['sched']['autogen'] = array(
     '#type' => 'checkbox',
-    '#title' => t('Generate Weekly Schedule'),
+    '#title' => t('Generate Blank Weekly Schedule'),
     '#required' => TRUE,
     '#default_value' => $autogen,
     '#weight' => -5
@@ -478,15 +478,20 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 5,
     '#default_value' => $oldrec->buyin+0,
   );
-   $form['finished'] = array(
-    '#type' => 'checkbox',
-    '#title' => t('Finished'),
-    '#required' => TRUE,
-    '#default_value' => $oldrec->finished,
-    '#description' => 'Check this to finalize the results.',
-    '#weight' => 1,
-  );
 
+  if ($oldrec->num_players){
+    $form['results'] = array(
+      '#value' => theme_plm_event_results($oldrec)
+    );
+    $form['finished'] = array(
+      '#type' => 'checkbox',
+      '#title' => t('Finished'),
+      '#required' => TRUE,
+      '#default_value' => $oldrec->finished,
+      '#description' => 'Check this to finalize the results.',
+      '#weight' => 1,
+    );
+  }
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => 'Save',
