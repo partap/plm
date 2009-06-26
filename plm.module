@@ -817,7 +817,7 @@ function theme_plm_event_list($season, $teaser) {
         'data' => $event->num_players ? $event->num_players : '',
         'class' => 'numcol'),
       $event->wid ? l($event->winner, "plm/players/pid/$event->wid") : '',
-      $event->finished ? l(t('full results'), "plm/events/$event->eid") : '',
+      $event->finished ? l(t('results'), "plm/events/$event->eid") : '',
     );
     if (user_access('administer poker league')) {
       if ($event->finished)
@@ -1279,7 +1279,12 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
       'data' => $points, 
       'style' => 'white-space:nowrap;'
     );
-    if ($rank > 10) $class = 'plm_bubble';
+    $num_final = 10;
+    if ($rank <= $num_final) 
+      $class = 'plm-final';
+    else 
+      $class = 'plm-bubble';
+
     $rows[] = array('data' => $rowdata, 'class' => $class);
     $rank++;
   }

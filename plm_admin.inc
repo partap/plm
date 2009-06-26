@@ -375,6 +375,7 @@ function plm_player_delete($pid) {
 }
 
 function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
+  global $user;
   if (isset($oldrec)) {
     drupal_set_title("Edit Event");
     $season = plm_season_load($oldrec->sid);
@@ -413,8 +414,11 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 32,
     '#weight' => -5
   );
-
-
+  $tz_offset = $user->timezone;
+  //drupal_set_message('<pre>' . print_r($user, TRUE) . '</pre>');
+  //$form['tzoffset'] = array(
+  //  '#value' => "<p><b>tzoffset:</b> $tz_offset</p>",
+  //);
   $fmt = 'D, M j Y';
   $event_date = $oldrec->event_date;
   if (!$event_date){
