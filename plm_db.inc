@@ -16,14 +16,23 @@ function _get_plm_player_by_name($name) {
   return $res;
 }
 
-function _get_plm_players($sort_phrase, $where_phrase = '') {
+function _get_plm_players($sort_phrase, $where_phrase = '', $max=-1) {
   if (!$sort_phrase) $sort_phrase = "ORDER BY name";
   $sql = "SELECT p.pid, p.name, 
           SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places,
           SUM(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins
           FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid " 
-          . $where_phrase . "GROUP BY p.pid, p.name " . $sort_phrase . " NULLS LAST"; 
-  $result = db_query($sql);
+          . $where_phrase . "GROUP BY p.pid, p.name " . $sort_phrase . " NULLS LAST";  
+  //drupal_set_message("SQL1: $sql");
+  if ($max > 0){
+    $count_qry = 'SELECT count(*) from {plm_player}';
+    $result = pager_query($sql, $max, 0, $count_qry);
+    //$result = pager_query($sql, $max, 0);
+    //drupal_set_message("SQL2: $sql");
+  }
+  else{
+    $result = db_query($sql);
+  }
   $list = array();
   while ($row = db_fetch_object($result)){
     $list[] = $row;
@@ -31,7 +40,7 @@ function _get_plm_players($sort_phrase, $where_phrase = '') {
   return $list;
 }
 
-function _get_plm_rankings($sid, $limit = NULL) {
+function _get_plm_standings($sid, $limit = NULL) {
   $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name NULLS LAST";
   if ($limit) $sort_phrase .= " LIMIT $limit";
   $sql = "SELECT p.pid, p.name, e.sid,
@@ -122,15 +131,16 @@ $sql = "SELECT *, NULLIF(s.end_date,0) AS end_dt
   return  db_fetch_object(db_query($sql, $sid));
 }
 
-function _get_num_plm_events($sid) {
+function _get_num_plm_events($sid, $where_phrase=NULL) {
   $sql = "SELECT count(*) as num_events 
           FROM {plm_event}
           WHERE sid=%d";
+  if (isset($where_phrase)) $sql .= " AND $where_phrase";
   return  db_result(db_query($sql, $sid));
 }
 
 function _get_plm_events($sid, $sort_phrase=NULL) {
-  if (!$sort_phrase) $sort_phrase='ORDER BY e.event_date';
+  if (!isset($sort_phrase)) $sort_phrase='ORDER BY e.event_date';
   
   $sql = "SELECT e.eid, e.title, p.name as host, e.event_date, e.hid, 
             e.num_players, r.pid AS wid, p2.name AS winner, e.finished
@@ -142,6 +152,9 @@ function _get_plm_events($sid, $sort_phrase=NULL) {
           $sort_phrase";
   $result = db_query($sql, $sid);
   while ($row = db_fetch_object($result)){
+    // Temp hardcode!!!
+    $row->eoy_rake = $row->num_players * 3;
+
     $list[] = $row;
   }
   return $list;
@@ -167,10 +180,23 @@ function _get_plm_event($eid) {
   $sql = "SELECT * from {plm_event} WHERE eid=%d";
   return db_fetch_object(db_query($sql, $eid));
 }
-function _get_latest_plm_event($sid) {
-  $latest_events = _get_plm_events($sid, 
-                   "AND e.finished != 0 ORDER BY event_date DESC LIMIT 1");
+function _get_latest_plm_event($sid, $finished=FALSE) {
+  global $user;
+  $qry =  " AND event_date <= " . (time() + $user->timezone);
+  if ($finished) $qry = " AND e.finished != 0";
+  $qry .= " ORDER BY event_date DESC LIMIT 1";
+  $latest_events = _get_plm_events($sid, $qry);
   return $latest_events[0];
+}
+
+function _get_upcoming_plm_events($sid) {
+  global $user;
+  $qry .=  " AND e.event_date >= " 
+    . (time() + $user->timezone);
+  $qry .= " ORDER BY event_date";
+  //drupal_set_message("sort_phrase: $qry");
+  $upcoming_events = _get_plm_events($sid, $qry);
+  return $upcoming_events;
 }
 function _get_plm_event_by_title($title, $sid) {
   $sql = "SELECT * from {plm_event} WHERE title=lower('%s') and sid=%d";
