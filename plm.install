@@ -123,6 +123,13 @@ function plm_schema() {
         'not null' => TRUE,
         'default' => '',
       ),
+      'name' => array(
+        'description' => 'This player\'s profile picture',
+        'type' => 'varchar',
+        'length' => 255,
+        'not null' => FALSE,
+        'default' => NULL,
+      ),
       
     ),
     'unique keys' => array(
@@ -274,8 +281,8 @@ function _plm_install_menu() {
   menu_link_save($link);
 
   $link = array( 
-    'link_title' =>  'Standings',
-    'link_path'  => 'plm/standings',
+    'link_title' =>  'Rankings',
+    'link_path'  => 'plm/rankings',
     'menu_name'  => 'plm',
     'module'     => 'plm',
     'weight'     => 2,

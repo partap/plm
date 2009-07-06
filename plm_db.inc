@@ -40,7 +40,7 @@ function _get_plm_players($sort_phrase, $where_phrase = '', $max=-1) {
   return $list;
 }
 
-function _get_plm_standings($sid, $limit = NULL) {
+function _get_plm_rankings($sid, $limit = NULL) {
   $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name NULLS LAST";
   if ($limit) $sort_phrase .= " LIMIT $limit";
   $sql = "SELECT p.pid, p.name, e.sid,
@@ -64,9 +64,12 @@ function _insert_plm_player($player) {
 }
 
 function _update_plm_player($player) {
-  $sql = "UPDATE {plm_player} SET name='%s'
+  $sql = "UPDATE {plm_player} 
+          SET name='%s', uid=%d, picture='%s'
           WHERE pid=%d";
-  return db_query($sql, $player->name, $player->pid);
+  return db_query($sql, 
+    $player->name, $player->uid, $player->picture,
+    $player->pid);
 }
 
 function _delete_plm_player($pid) {

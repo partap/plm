@@ -17,7 +17,7 @@
  *       we have sid and so we can either rewrite breadcrumbs,
  *       or use a custom seasons browsing menu or selector...investigate ?destination=xxx...
  *   - Schedule (upcoming games)
- *   - Current Standings
+ *   - Current Rankings
 
  * - Handle final table  - Accumulate rakes?
  * - Publish game results when done (custom node type?)
@@ -116,10 +116,10 @@ function plm_menu() {
     'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
   ); 
-  $items['plm/seasons/%plm_season/standings'] = array(
-    'title' => t('Standings'),
-    'description' => 'View the current standings for this season.',
-    'page callback' => 'plm_standings',
+  $items['plm/seasons/%plm_season/rankings'] = array(
+    'title' => t('Rankings'),
+    'description' => 'View the current rankings for this season.',
+    'page callback' => 'plm_rankings',
     'page arguments' => array(2),
     'access arguments' => array('access poker league content'),
     'type' => MENU_LOCAL_TASK,
@@ -243,10 +243,10 @@ function plm_menu() {
     'file' => 'plm_admin.inc',
     'menu_name' => 'plm',
   );
-  $items['plm/standings'] = array(
-    'title' => t('Current Standings'),
-    'description' => 'View the current standings for this season.',
-    'page callback' => 'plm_standings',
+  $items['plm/rankings'] = array(
+    'title' => t('Current Rankings'),
+    'description' => 'View the current rankings for this season.',
+    'page callback' => 'plm_rankings',
     'access arguments' => array('access poker league content'),
     'type' => MENU_NORMAL_ITEM,
     'weight' => 2,
@@ -365,7 +365,7 @@ function plm_main() {
 
 }
 
-function plm_standings($plm_season=NULL) {
+function plm_rankings($plm_season=NULL) {
   if (!isset($plm_season)){
     $sid=variable_get('plm_current_season', 0);
     $plm_season = _get_plm_season($sid);
@@ -374,7 +374,7 @@ function plm_standings($plm_season=NULL) {
     $output = '<p>No Season Selected<p>';
     return $output;
   }  
-  drupal_set_title("$plm_season->title Standings");
+  drupal_set_title("$plm_season->title Rankings");
   
   $header = array(
     array(
@@ -397,7 +397,7 @@ function plm_standings($plm_season=NULL) {
     $header[] = array('data' => t('Winnings'));
   }
   $sid = $plm_season->sid;
-  $players = _get_plm_standings($sid);
+  $players = _get_plm_rankings($sid);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
     return $output;
@@ -573,7 +573,8 @@ function plm_players_list($max_players_per_page=50) {
 }
 
 function plm_player_view($player) {
-  drupal_set_title('Player Profile: ' . $player->name);
+  drupal_set_title('Player Profile');
+  //drupal_set_title('Player Profile: ' . $player->name);
   //$output = "<p>Details of $player->name go here</p>\n";
   $output .= theme_plm_player_details($player);
   return $output;
@@ -591,14 +592,20 @@ function theme_plm_player_details($player) {
   if (user_access('access poker league member content')) {
     $header[] = "Winnings";
   }
-  
+
+  $cur_season = _get_plm_season(variable_get('plm_current_season', 0));
+
   $places = _get_plm_results_by_player($player->pid);
   if (!isset($places)) return '<p>No places on record.</p>';
   $sid    = NULL;
   $s_points   = array();
   $s_cash     = array();
+  $s_wins     = array();
+  $s_places   = array();
   $tot_points = 0;
   $tot_cash   = 0;
+  $tot_wins   = 0;
+  $tot_places = 0;
 
   foreach ($places as $r) {
     // Season Totals
@@ -622,6 +629,9 @@ function theme_plm_player_details($player) {
       );
       $tot_points += $s_points[$sid];
       $tot_cash   += $s_cash[$sid];
+      $tot_wins   += $s_wins[$sid];
+      $tot_places += $s_places[$sid];
+      
     }
     
     $rowdata = array(
@@ -641,6 +651,9 @@ function theme_plm_player_details($player) {
     $sid       = $r->sid;
     $s_points[$sid] += $r->points;
     $s_cash[$sid]   += $r->cash;
+    $s_places[$sid]++;
+    if ($r->place == 1)
+      $s_wins[$sid]++;
   }
   // Last Season Total
   if ($sid){
@@ -660,6 +673,7 @@ function theme_plm_player_details($player) {
     );
     $tot_points += $s_points[$sid];
     $tot_cash   += $s_cash[$sid];
+    //drupal_set_message('<pre>' . print_r($rows, TRUE) . '</pre>');
   }
   // Grand Total
   $rowdata = array(
@@ -675,6 +689,60 @@ function theme_plm_player_details($player) {
     'data' => $rowdata,
   );
   
+  // Player picture, bio, stats summary, etc...
+  if (user_access('access poker league member content')) {
+
+    $summary_rows = array();
+    if (isset($cur_season)){
+      // Current season stats
+      $summary_rows[] = array(
+        'class' => 'subhead',
+        'data' => array(
+          array('data' => $cur_season->title, 'header' => 1, 'colspan' => 2),
+        )
+      );
+      $summary_rows[] = array(
+        array('data' => 'Points', 'header' => 1),
+        array('data' => $s_points[$cur_season->sid], 'align' => 'right'),
+      );
+      $summary_rows[] = array(
+        array('data' => 'Winnings', 'header' => 1 ),
+        array('data' => '$' . $s_cash[$cur_season->sid], 'align' => 'right'),
+      );
+     
+      //drupal_set_message('<pre>' . print_r($summary_rows, TRUE) . '</pre>');
+    }
+    
+    // All time stats
+    $rowdata =  array('data' => 'All Time' , 'header' => 1, 'colspan' => 2);
+    $summary_rows[] = array(
+      'class' => 'subhead',
+      'data' => array($rowdata),
+    );
+    $summary_rows[] = array(
+      'data' => array(
+        array('data' => 'Points', 'header' => 1),
+        array('data' => $tot_points, 'align' => 'right'),
+      ));
+    $summary_rows[] = array(
+      'data' => array(
+        array('data' => 'Winnings', 'header' => 1 ),
+        array('data' => '$' . $tot_cash, 'align' => 'right'),
+      )
+    );
+
+    $output .= '<div class="player-summary">';
+    if ($player->picture) {
+      $output .= '<div class="player-picture"><img src="' 
+        . url($player->picture) . '"/></div>';    
+    }
+    $output .= '<h1>' . $player->name . '</h1>';
+    $attr = array('class' => 'stattable clear-block');
+    $output .= '<div>';
+    $output .= theme('table', array(), $summary_rows, $attr);
+    $output .= '</div>';
+    $output .= '</div>';
+  }  
   
   $output .= theme('table', $header, $rows);
   return $output;
@@ -1241,7 +1309,7 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   //   //array('data' => t('Places')),
   // );
 
-  $players = _get_plm_standings($plm_season->sid);
+  $players = _get_plm_rankings($plm_season->sid);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
     return $output;
@@ -1298,7 +1366,7 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   }
   $attr = array('class' => 'compact-table');
   $output .= theme('table', $header, $rows, $attr, $caption);
-  $output .= l(t('More...'), "plm/seasons/$plm_season->sid/standings");
+  $output .= l(t('More...'), "plm/seasons/$plm_season->sid/rankings");
   return $output;
 }
 

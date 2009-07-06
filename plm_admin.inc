@@ -305,6 +305,7 @@ function plm_player_form(&$form_state, $player=NULL) {
   else{
     drupal_set_title(t('New Player'));
   }
+  $form['#attributes'] = array('enctype' => "multipart/form-data");
   $form['name'] = array(
     '#type' => 'textfield',
     '#title' => 'Player Name',
@@ -312,11 +313,57 @@ function plm_player_form(&$form_state, $player=NULL) {
     '#required' => TRUE,
   );
 
-  
+  // $form['userref'] = array(
+  //   '#type'               => 'userreference_autocomplete',
+  //   '#title'              => 'User Account',                 
+  //   '#field_name'         => 'field_chump',
+  // );
 
+  // check whether the picture directory exists:
+  $picture_path = file_create_path(variable_get('plm_picture_path', 'plm_pictures'));
+  file_check_directory($picture_path, 1, 'plm_picture_path');
+
+  // Profile Picture
+
+  $form['plm_picture'] = array(
+    '#type' => 'fieldset', 
+    '#title' => t('Picture'), 
+    '#weight' => 1
+  );
+
+  if ($player) {
+    // only add a picture to an existing player record
+    if ($player->picture){
+      //$picture = theme('plm_player_picture', $player->picture);
+      $picture = '<div class="edit-player-picture"><img src="' 
+        . url($player->picture) . '"/></div>';
+      $form['plm_picture']['current_picture'] = array('#value' => $picture);
+      $form['plm_picture']['picture_delete'] = array(
+        '#type' => 'checkbox', 
+        '#title' => t('Delete picture'), 
+        '#description' => t('Check this box to delete your current picture.')
+      );
+    }
+    else {
+      $form['plm_picture']['picture_delete'] = array('#type' => 'hidden');
+    }
+    $form['plm_picture']['plm_picture_upload'] = array(
+      '#type' => 'file', 
+      '#title' => t('Upload picture'), 
+      //'#size' => 30, 
+      '#description' => t(
+        'Your virtual face or picture. '
+        . 'Maximum dimensions are %dimensions and the maximum size is %size kB.', array(
+          '%dimensions' => variable_get('plm_picture_dimensions', '250x250'), 
+          '%size'       => variable_get('plm_picture_file_size', '100'))
+      )
+    );
+    $form['#validate'][] = 'plm_validate_picture';
+  }
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => 'Submit',
+    '#weight' => 1000,
   );
   return $form;  
 }
@@ -328,26 +375,67 @@ function plm_player_form_validate($form, &$form_state) {
     form_set_error('name', 'Player Name is required');
 
   $rec = _get_plm_player_by_name($name);
-  //$str="Yubba yubba name=$name pid=$pid rec->pid=$rec->pid";
-  //form_set_error('name', $str);
 
   if ($rec && $rec->pid != $pid) 
     form_set_error(
       'name', t("There is already a player called <i>@name</i>.", 
                 array('@name' => $rec->name)));
 }
+function plm_validate_picture($form, &$form_state) {
+  // If required, validate the uploaded picture.
+   $validators = array(
+     'file_validate_is_image' => array(),
+     'file_validate_image_resolution' => array(
+       variable_get('plm_picture_dimensions', '250x250')),
+     'file_validate_size' => array(variable_get('plm_picture_file_size', '100') * 1024),
+   );
+  $myfile = file_save_upload('plm_picture_upload', $validators);
+  if ($myfile) {
+    // Remove the old picture.
+    if (isset($form_state['values']['_player']->picture) 
+      && file_exists($form_state['values']['_player']->picture)) {
+      file_delete($form_state['values']['_player']->picture);
+    }
+
+    // The image was saved using file_save_upload() and was added to the
+    // files table as a temporary file. We'll make a copy and let the garbage
+    // collector delete the original upload.
+    $info = image_get_info($myfile->filepath);
+    $pid  = $form_state['values']['_player']->pid;
+    $destination = variable_get('plm_picture_path', 'plm_pictures') 
+      .'/picture-'. $pid .'.'. $info['extension'];
+    if (file_copy($myfile, $destination, FILE_EXISTS_REPLACE)) {
+      $form_state['values']['plm_picture'] = $myfile->filepath;
+    }
+    else {
+      form_set_error('picture_upload', t("Failed to upload the picture image; the %directory directory doesn't exist or is not writable.", 
+          array('%directory' => variable_get('plm_picture_path', 'plm_pictures'))));
+    }
+  }
+}
 
 function plm_player_form_submit($form, &$form_state) {
-  $pid  = $form_state['values']['_player']->pid;
+  $player  = $form_state['values']['_player'];
+  $pid  = $player->pid;
   $player->name = trim($form_state['values']['name']);
-  $player->pid = $pid;
+
+  // Delete picture if requested, and if no replacement picture was given.
+  if (!empty($form_state['picture_delete'])) {
+    if ($player->picture && file_exists($player->picture)) {
+      file_delete($player->picture);
+    }
+    $player->picture = '';
+  }
+  if (isset($form_state['values']['plm_picture'])){
+    $player->picture = $form_state['values']['plm_picture'];
+  }
 
   if ($pid) _update_plm_player($player);
   else _insert_plm_player($player);
 
   drupal_set_message(
     t("Saved player <i>@name</i>.", array('@name' => $player->name)));
-  $form_state['redirect'] = 'plm/players';
+  //$form_state['redirect'] = 'plm/players';
 }
 
 
