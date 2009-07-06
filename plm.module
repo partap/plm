@@ -41,6 +41,22 @@ require_once drupal_get_path('module', 'plm') .'/plm_db.inc';
 require_once drupal_get_path('module', 'plm') .'/plm_file.inc';
 //require_once drupal_get_path('module', 'plm') .'/plm_tablesort.inc';
 
+
+/*
+ * Implementation of hook_init().
+*/
+function plm_init() {
+  $stylesheet = drupal_get_path('theme', $GLOBALS['theme_key'] .'/plm.css');
+  if (!file_exists($stylesheet)) {
+    $stylesheet = drupal_get_path('module', 'plm') .'/plm.css';
+  }
+  drupal_add_css($stylesheet);
+}
+
+
+/*
+ * Implementation of hook_menu().
+*/
 function plm_menu() {
   $items = array();
   //drupal_set_message('plm_menu() called');
@@ -773,13 +789,24 @@ function plm_seasons_list() {
   }
   $list = array();
   $fmt = 'D, M j Y';
+  $current = variable_get('plm_current_season', 0);
   foreach ($seasons as $s) {
     $datestr = format_date($s->start_date, 'custom', $fmt);
     if ($s->end_date) $datestr .= " to " . format_date($s->end_date, 'custom', $fmt);
     else $datestr = 'Started ' . $datestr;
     //$output .= "<p>item($s->title, $datestr)</p>";
-    $list[] = l(t("$s->title"), 
-                "plm/seasons/$s->sid") . "<div>$datestr</div>";
+    
+    if ($s->sid == $current) {
+      $list[] = '<div class="current">' 
+        . l($s->title, "plm/seasons/$s->sid") 
+        . '</div>'
+        . "<div>$datestr</div>";
+    }
+    else{
+      $list[] = l("$s->title", 
+                "plm/seasons/$s->sid") 
+        . "<div>$datestr</div>";
+    }
   }
   $output .= theme('item_list', $list);
   return $output;

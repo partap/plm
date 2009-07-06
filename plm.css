@@ -1,0 +1,16 @@
+.current
+{
+    font-weight: bold;
+}
+
+.upcoming iframe
+{
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+}
+div.player-picture 
+{
+    float: left;
+    margin: 5px;
+}
