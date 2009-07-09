@@ -294,7 +294,7 @@ function plm_season_confirm_delete_submit($form, &$form_state) {
   $form_state['redirect'] = 'plm/seasons';
 }
 function plm_season_delete($sid) {
-  _delete_plm_season($sid);
+  return _delete_plm_season($sid);
 }
 
 function plm_player_form(&$form_state, $player=NULL) {
@@ -459,7 +459,7 @@ function plm_player_confirm_delete_submit($form, &$form_state) {
   $form_state['redirect'] = 'plm/players';
 }
 function plm_player_delete($pid) {
-  _delete_plm_player($pid);
+  return _delete_plm_player($pid);
 }
 
 function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
@@ -476,7 +476,7 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
   $sid = $season->sid;
   $form['season'] = array(
     '#title'         => t('Season'),
-    '#value' => "<h3>$season_title</h3>",
+    '#value' => '<h3>' . l($season_title, "plm/seasons/$sid") . '</h3>',
     "#weight" => -20,
   );
   
@@ -546,14 +546,44 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 16,
 
   );
-  $form['num_players'] = array(
-    '#type'          => 'textfield',
-    '#title'         => 'Num Players',
+
+  if ($oldrec->eid) 
+    $list_entrants = $oldrec->list_entrants;
+  else 
+    // Use season default
+    $list_entrants = $season->list_entrants;
+
+  $form['list_entrants'] = array(
+    '#type'          => 'checkbox',
+    '#title'         => 'List All Entrants',
     '#required'      => TRUE,
-    '#size' => 4,
-    '#maxlength' => 4,
-    '#default_value' => $oldrec->num_players+0,
+    '#default_value' => $list_entrants,
   );
+
+  if ($oldrec->eid){
+    $form['num_players'] = array(
+      '#type'          => 'textfield',
+      '#title'         => 'Num Players',
+      '#required'      => TRUE,
+      '#size' => 4,
+      '#maxlength' => 4,
+      '#default_value' => $oldrec->num_players+0,
+    );
+    
+    // $form['view_roster'] = array(
+    //   '#value' => l('View Roster', "plm/events/$oldrec->eid/roster")
+    // );
+  }
+  else {
+    $form['num_players'] = array(
+      '#type' => 'hidden',
+      '#value' => '0',
+    );
+    //$form['list_entrants'] = array(
+    //   '#type' => 'hidden',
+    //   '#value' => '0',
+    // );
+  }
   $form['pot_start'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Initial Pot',
@@ -571,7 +601,7 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#default_value' => $oldrec->buyin+0,
   );
 
-  if ($oldrec->num_players){
+  if ($oldrec->num_players || $oldrec->list_entrants){
     $form['results'] = array(
       '#value' => theme_plm_event_results($oldrec)
     );
@@ -616,17 +646,23 @@ function plm_event_form_validate($form, &$form_state) {
       'title', t("There is already a event called <i>@title</i> in this season.", 
                  array('@title' => $title)));
   
-  
+  $list_entrants = $form_state['values']['list_entrants'];
+  if ($list_entrants){
+    $num_entrants = _get_num_plm_event_entrants($eid);
+    if ($num_entrants > 0)
+      $form_state['values']['num_players'] = $num_entrants;
+  }
 }
 function plm_event_form_submit($form, &$form_state) {
-  $rec->sid          = $form_state['values']['sid'];
-  $rec->eid          = $form_state['values']['eid'];
-  $rec->title        = check_plain(trim($form_state['values']['title']));
-  $rec->event_date   = strtotime($form_state['values']['event_date']);
-  $rec->num_players  = $form_state['values']['num_players'];
-  $rec->pot_start    = $form_state['values']['pot_start'];
-  $rec->buyin        = $form_state['values']['buyin'];
-  $rec->finished     = $form_state['values']['finished'];
+  $rec->sid           = $form_state['values']['sid'];
+  $rec->eid           = $form_state['values']['eid'];
+  $rec->title         = check_plain(trim($form_state['values']['title']));
+  $rec->event_date    = strtotime($form_state['values']['event_date']);
+  $rec->num_players   = $form_state['values']['num_players'];
+  $rec->pot_start     = $form_state['values']['pot_start'];
+  $rec->buyin         = $form_state['values']['buyin'];
+  $rec->finished      = $form_state['values']['finished'];
+  $rec->list_entrants = $form_state['values']['list_entrants'];
   
   $host = check_plain(trim($form_state['values']['host_name']));
   if (strlen($host) > 0){ 
@@ -669,7 +705,7 @@ function plm_result_form(&$form_state, $result) {
     '#type' => 'checkbox',
     '#title' => 'New Player',
     '#default_value' => FALSE,
-    '#description' => 'Check this box to add a new player to the roster.',
+    '#description' => 'Check this box if this is a new player to the league.',
   );
   $form['points'] = array(
     '#type' => 'textfield',
@@ -793,6 +829,160 @@ function plm_result_confirm_delete_submit($form, &$form_state) {
   $form_state['redirect'] = "plm/events/$result->eid";
 }
 function plm_result_delete($eid,$place) {
-  _delete_plm_result($eid, $place);
+  return _delete_plm_result($eid, $place);
+}
+
+
+
+function plm_entrant_form(&$form_state, $oldrec=NULL, $event=NULL) {
+  if (isset($oldrec)) {
+    drupal_set_title("Edit Entrant");
+    $event = plm_event_load($oldrec->eid);
+    $form['_entrant'] = array('#type' => 'value', '#value' => $oldrec);
+    $player = _get_plm_player($oldrec->pid);
+  }
+  else {
+    drupal_set_title("New Entrant");
+  }
+  $event_title = $event->title;
+  $eid = $event->eid;
+
+  $form['_eid'] = array('#type' => 'value', '#value' => $eid);
+
+  $form['event'] = array(
+    '#title'         => t('Event'),
+    '#value' => '<h3>' . l($event_title, "plm/events/$eid") . '</h3>',
+    "#weight" => -20,
+
+  );
+
+  $form['name'] = array(
+   '#type' => 'textfield',
+    '#title' => 'Player Name',
+    '#default_value' => $player->name,
+  );
+  $form['_new_player'] = array(
+    '#type' => 'checkbox',
+    '#title' => 'New Player',
+    '#default_value' => FALSE,
+    '#description' => 'Is this a new player to be added to the league roster?',
+  );
+
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Save',
+  );
+  // $form['cancel'] = array(
+  //   '#type' => 'button',
+  //   '#value' => 'Cancel',
+  //   '#submit' => 'plm_entrant_cancel_submit',
+  //   //'#value' => l("Cancel", "plm/events/$oldrec->eid/entrants"),
+  // );
+  $form['delete'] = array(
+    '#type' => 'button',
+    '#value' => 'Delete',
+    '#submit' => 'plm_entrant_delete_submit',
+  );
+  return $form;  
+  
+
+}
+
+function plm_entrant_form_validate($form, &$form_state) {
+  $oldrec        = $form_state['values']['_entrant'];
+  $eid           = $form_state['values']['_eid'];
+  $new_player = $form_state['values']['_new_player'];
+  
+
+  $name   = trim($form_state['values']['name']);
+  
+  if (strlen($name) > 0) 
+    $rec = _get_plm_player_by_name($name);
+  $pid = $rec->pid;
+  if (!$pid) {
+    if (!$new_player) {
+      form_set_error(
+        'name', t("There is no registered player named <i>@name</i>.", 
+                  array('@name' => $name)));
+    }
+  }
+  else {
+    if ($new_player) {
+      form_set_error(
+        'name', t("There is already a player named <i>@name</i>.", 
+                  array('@name' => $name)));      
+    }
+  }
+  $entrant = _find_plm_entrant($eid, $pid);
+  if ($entrant){
+   form_set_error(
+        'name', t("<i>@name</i> is already entered in this event.", 
+                  array('@name' => $name)));      
+  }
+
+  $form_state['values']['pid'] = $pid;
+}
+
+function plm_entrant_form_submit($form, &$form_state) {
+  $oldrec        = $form_state['values']['_entrant'];
+  $r->eid     = $form_state['values']['_eid'];
+  $r->pid     = $form_state['values']['pid'];
+  $name       = trim($form_state['values']['name']);
+  
+  $new_player = $form_state['values']['_new_player'];
+  if ($new_player){
+    $rec = new stdClass();
+    $rec->name = $name;
+    $r->pid = _insert_plm_player($rec);
+  }
+  if (!$oldrec) {
+    if (_insert_plm_entrant($r)) {
+      _update_num_plm_event_entrants($r->eid);
+      drupal_set_message(
+        t("Added entrant: %name", 
+          array('%name' => $name)));
+    }
+  }
+  else {
+    if (_update_plm_entrant($r)) {
+      drupal_set_message(
+        t("SUpdated entrant: %name",
+          array('%name' => $name)));
+    }      
+  }
+  $form_state['redirect'] = 'plm/events/' . $r->eid . '/entrants';
+
+}
+
+function plm_entrant_cancel_submit($form, &$form_state) {
+  $oldrec        = $form_state['values']['_entrant'];
+  $form_state['redirect'] = 'plm/events/' . $r->eid . '/entrants';
+}
+
+function plm_entrant_delete_submit($form, &$form_state) {
+  $oldrec        = $form_state['values']['_entrant'];
+  $form_state['redirect'] = 'plm/entrants/' . $entid . '/delete';
+}
+
+function plm_entrant_confirm_delete(&$form_state, $entrant) {
+  $form['_entrant'] = array('#type' => 'value', '#value' => $entrant);
+
+  return confirm_form(
+    $form,
+    t('Are you sure you want to delete this entrant?'),
+    'plm/entrants/'. $entrant->entid . '/edit',
+    t('This action cannot be undone.'),
+    t('Delete'), t('Cancel'));
+}
+function plm_entrant_confirm_delete_submit($form, &$form_state) {
+  $entrant = $form_state['values']['_entrant'];
+  if (plm_entrant_delete($entrant->entid)){
+    _update_num_plm_event_entrants($r->eid);
+    drupal_set_message(t("The entrant has been deleted."));
+  }
+  $form_state['redirect'] = "plm/events/$entrant->eid/entrants";
+}
+function plm_entrant_delete($entid) {
+  return _delete_plm_entrant($entid);
 }
 

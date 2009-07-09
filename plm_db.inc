@@ -209,27 +209,29 @@ function _get_plm_event_by_title($title, $sid) {
 // return id of new record or FALSE if error
 function _insert_plm_event($rec) {
   $res = db_query("INSERT INTO {plm_event} 
-            (title, sid, event_date, hid, num_players, pot_start, buyin, finished) 
-            VALUES ('%s', %d, %d, %d, %d, %d, %d, %d)", 
-                  $rec->title, $rec->sid,
-                  $rec->event_date, $rec->hid, $rec->num_players, 
-                  $rec->pot_start, $rec->buyin, $rec->finished);
+                   (title, sid, event_date, hid, num_players, pot_start, buyin, finished) 
+                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d)", 
+         $rec->title, $rec->sid,
+         $rec->event_date, $rec->hid, $rec->num_players, 
+         $rec->pot_start, $rec->buyin, $rec->finished);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_event}'), 'eid');
 }
 function _update_plm_event($rec) {
   return db_query("UPDATE {plm_event} 
-              SET title='%s', event_date=%d, 
-                sid=%d, hid=%d, num_players=%d,
-                pot_start=%d, buyin=%d, finished=%d
-              WHERE eid = %d", 
-                  $rec->title, $rec->event_date, 
-                  $rec->sid, $rec->hid, $rec->num_players,
-                  $rec->pot_start, $rec->buyin, $rec->finished,
-                  $rec->eid);
+                   SET title='%s', event_date=%d, 
+                   sid=%d, hid=%d, num_players=%d,
+                   pot_start=%d, buyin=%d, finished=%d, list_entrants=%d
+                   WHERE eid = %d", 
+    $rec->title, $rec->event_date, 
+    $rec->sid, $rec->hid, $rec->num_players,
+    $rec->pot_start, $rec->buyin, $rec->finished, $rec->list_entrants,
+    $rec->eid);
 }
 
 function _delete_plm_event($eid) {
+  $res = db_query("DELETE FROM {plm_entrant} WHERE eid=%d", $eid); 
+  if (!$res) return $res;
   $res = db_query("DELETE FROM {plm_result} WHERE eid=%d", $eid); 
   if (!$res) return $res;
   return db_query("DELETE FROM {plm_event}  WHERE eid=%d", $rec->eid);
@@ -294,4 +296,67 @@ function _update_plm_result($rec) {
 function _delete_plm_result($eid, $place) {
     $sql = "DELETE FROM {plm_result} where eid=%d AND $place=%d";
     return db_query($sql, $eid,$place);
+}
+
+function _get_plm_entrant($entid) {
+  $sql = "SELECT * FROM {plm_entrant} 
+          WHERE entid=%d";
+  return db_fetch_object(db_query($sql, $entid));
+}
+
+function _find_plm_entrant($eid, $pid) {
+  $sql = "SELECT * FROM {plm_entrant} 
+          WHERE eid=%d AND pid=%d";
+  return db_fetch_object(db_query($sql, $eid, $pid));
+}
+
+function _get_plm_event_entrants($eid) {
+  $sql = "SELECT e.entid, e.eid, e.pid, p.name  
+          FROM {plm_entrant} e
+          LEFT JOIN {plm_player} p USING (pid)
+          WHERE eid=%d
+          ORDER BY entid";
+  $result = db_query($sql, $eid);
+  $list = array();
+  while ($row = db_fetch_object($result)){
+    $list[] = $row;
+  }
+  return $list;
+}
+function _get_num_plm_event_entrants($eid) {
+  $sql = "SELECT count(*) AS n
+          FROM {plm_entrant} e
+          WHERE eid=%d";
+  $result = db_fetch_object(db_query($sql, $eid));
+  if ($result)
+    return $result->n;
+  return $result;
+}
+function _update_num_plm_event_entrants($eid) {
+
+  $sql = "UPDATE {plm_event} 
+          SET num_players = (SELECT COUNT(*) FROM {plm_entrant} WHERE eid=%d)
+          WHERE eid=%d AND list_entrants != 0";
+  $result = db_query($sql, $eid, $eid);
+  return $result;
+}
+function _insert_plm_entrant($rec) {
+  $sql = "INSERT INTO {plm_entrant} (eid, pid) 
+          VALUES (%d, %d)";
+  $res = db_query($sql, $rec->eid, $rec->pid);
+  if (!$res) return $res;
+  return db_last_insert_id(db_prefix_tables('{plm_entrant}'), 'entid');  
+}
+
+function _update_plm_entrant($rec) {
+  $sql = "UPDATE {plm_entrant} 
+          SET eid=%d, pid=%d
+          WHERE entid=%d";
+  $res = db_query($sql, $rec->eid, $rec->pid, $rec->entid);
+  return $res;
+}
+
+function _delete_plm_entrant($entid) {
+  $sql = "DELETE FROM {plm_entrant} WHERE entid=%d";
+  return db_query($sql, $entid);
 }

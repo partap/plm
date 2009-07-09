@@ -91,8 +91,13 @@ function plm_schema() {
         'description' => 'Date of the event',
         'type' => 'int', 'not null' => TRUE, 'default' => 0
       ), 
+      'list_entrants' => array(
+        'description' => 'boolean: true if all players are listed in plm_entrants',
+        'type' => 'int', 'size' => 'tiny',
+        'not null' => TRUE, 'default' => 0
+      ),
       'finished' => array(
-        'description' => 'boolean: nonzero if the results have been finalized',
+        'description' => 'boolean: true if the results have been finalized',
         'type' => 'int', 'size' => 'tiny',
         'not null' => TRUE, 'default' => 0
       ),
@@ -136,6 +141,33 @@ function plm_schema() {
       'name'  => array('name'),
     ),
     'primary key' => array('pid'),
+  );
+  $schema['plm_entrant'] = array(
+    'description' => 'Event Entrants',
+    'fields' => array(
+      'entid' => array(
+        'description' => 'Roster entry id',
+        'type'        => 'serial',
+        'unsigned'    => TRUE,
+        'not null'    => TRUE,
+      ),
+      'eid' => array(
+        'description' => 'Event Id',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+      ),
+      'pid' => array(
+        'description' => 'Player Id',
+        'type' => 'int', 
+        'unsigned' => TRUE,
+        'not null' => TRUE, 
+      ),
+    ),
+    'primary key' => array('entid'),
+    'unique keys' => array(
+      'eid_pid' => array('eid', 'pid'),
+    ),    
   );
   $schema['plm_result'] = array(
     'description' => 'Event results',

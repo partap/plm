@@ -150,6 +150,8 @@ function plm_menu() {
     'menu_name' => 'plm',
     'file' => 'plm_admin.inc',
   );
+
+
   $items['plm/events/%plm_event'] = array(
     'title' => t('Event'),
     'description' => 'View the details of a poker event',
@@ -168,7 +170,6 @@ function plm_menu() {
   $items['plm/events/%plm_event/edit'] = array(
     'title' => t('Edit'),
     'description' => 'Edit the details of a poker event',
-    'page callback' => 'plm_event_form',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_event_form', 2),
     'access arguments' => array('administer poker league'),
@@ -176,6 +177,56 @@ function plm_menu() {
     'menu_name' => 'plm',
     'file' => 'plm_admin.inc',
   );
+  $items['plm/events/%plm_event/entrants'] = array(
+    'title' => t('Entrants'),
+    'description' => 'View the entrants of a poker event',
+    'page callback' => 'plm_entrants_list',
+    'page arguments' => array(2),
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_LOCAL_TASK,
+    'menu_name' => 'plm',
+    'file' => 'plm.inc',
+  );
+  $items['plm/events/%plm_event/entrants/list'] = array(
+    'title'  => t('List'),
+    'weight' => -1,
+    'type'   => MENU_DEFAULT_LOCAL_TASK,
+    'menu_name' => 'plm',
+  );
+
+
+  $items['plm/events/%plm_event/entrants/add'] = array(
+    'title' => 'Add Entrant',
+    'description' => 'Register a player for this event',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_entrant_form',  NULL, 2),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_LOCAL_TASK,
+    'menu_name' => 'plm',
+    'file' => 'plm_admin.inc',
+  );
+  $items['plm/entrants/%plm_entrant/edit'] = array(
+    'title' => t('Edit'),
+    'description' => 'Edit an event entrant',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_entrant_form', 2),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_LOCAL_TASK,
+    'menu_name' => 'plm',
+    'file' => 'plm_admin.inc',
+  );
+  $items['plm/entrants/%plm_entrant/delete'] = array(
+    'title' => t('Delete'),
+    'description' => 'Delete an event entrant',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_entrant_confirm_delete', 2),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_LOCAL_TASK,
+    'menu_name' => 'plm',
+    'file' => 'plm_admin.inc',
+  );
+
+
   $items['plm/players'] = array(
     'title' => t('Players'),
     'description' => 'List All Players',
@@ -229,7 +280,7 @@ function plm_menu() {
   );
   $items['plm/players/pid/%plm_player/delete'] = array(
     'title' => t('Delete'),
-    'description' => 'Delete player from the roster',
+    'description' => 'Delete player from the league roster',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_player_confirm_delete', 3),
     'access arguments' => array('administer poker league'),
@@ -481,6 +532,10 @@ function plm_season_title($plm_season) {
 
 function plm_player_load($pid) {
   return _get_plm_player($pid);
+}
+
+function plm_entrant_load($entid) {
+  return _get_plm_entrant($entid);
 }
 
 function plm_players_list($max_players_per_page=50) {
@@ -835,28 +890,37 @@ function theme_plm_upcoming_events($season){
   }
   $today = time() + $user->timezone;
   $fmt = 'D, M j';
-  $output .= '<div class="upcoming">';
-  $output .= "<h2>Upcoming events:</h2>";
+  $found_upcoming=FALSE;
   foreach ($events as $e) {
-    if (!($e->hid)) continue;
+    //if (!($e->hid)) continue;
     $datestr = format_date($e->event_date, 'custom', $fmt);
     $days = ($e->event_date - $today) / 86400;
+    $daystr=NULL;
     if ($days == 0) $daystr = 'Tonight';
     else if ($days == 1) $daystr = 'Tomorrow';
-    else if ($days < 7) $daystr = 'Next week';
-    else {
-      $weeks = ceil($days/7);
-      $daystr = "In $weeks weeks";
+    else if ($days < 7) $daystr = 'This week';
+    else continue;
+    // else if ($days < 14) {
+    //   $weeks = ceil($days/7);
+    //   $daystr = "In $weeks weeks";
+    // }
+    if (!$found_upcoming){
+      $output .= '<div class="upcoming">';
+      $output .= "<h2>Upcoming events:</h2>";
+      $found_upcoming = TRUE;
     }
-    
     $output .= "<hr/>\n";
-    $output .= "<h3>$daystr:</h3> "
-      . "<p><b>$e->title</b> will be hosted by $e->host on $datestr.</p>";
+    if ($daystr)
+      $output .= "<h3>$daystr:</h3> ";
+    $output .= "<p><b>$e->title</b> will be"
+      . ($e->hid ? " hosted by $e->host" : ' held')
+      . " on $datestr.</p>";
     if ($e->hid == 1) {
       $output .= '<iframe width="400" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="http://maps.google.com/maps?f=q&amp;source=s_q&amp;hl=en&amp;geocode=&amp;q=3308+La+Veta+Dr+NE,+Albuquerque,+NM+87110&amp;sll=35.119593,-106.584249&amp;sspn=0.014357,0.027337&amp;ie=UTF8&amp;ll=35.12391,-106.581931&amp;spn=0.012285,0.018239&amp;z=15&amp;output=embed"></iframe><br /><small><a href="http://maps.google.com/maps?f=q&amp;source=embed&amp;hl=en&amp;geocode=&amp;q=3308+La+Veta+Dr+NE,+Albuquerque,+NM+87110&amp;sll=35.119593,-106.584249&amp;sspn=0.014357,0.027337&amp;ie=UTF8&amp;ll=35.12391,-106.581931&amp;spn=0.012285,0.018239&amp;z=15" style="color:#0000FF;text-align:left">View Larger Map</a></small>';
     }
   }
-  $output .= '</div>';
+  if ($found_upcoming)
+    $output .= '</div>';
   return $output;
 }
 function theme_plm_date_range($season, $teaser) {
@@ -959,8 +1023,18 @@ function plm_event_load($node) {
   return _get_plm_event($node);
 }
 function plm_event_view($event, $teaser = FALSE, $page = FALSE) {
-  drupal_set_title("$event->title");
-  $output = theme_plm_event_details($event);
+  $season = _get_plm_season($event->sid);
+  $title = "$season->title: $event->title";
+  drupal_set_title($title);
+  $output .= theme_plm_event_details($event);
+  if ($teaser) return $output;
+  // if (!$event->list_entrants) return $output;
+  // $entrants = _get_plm_event_entrants($event->eid);
+  // if ($entrants){
+  //   $output .= '<h3>Entrants</h3>';
+  // }
+  // $output .= theme_plm_event_entrants($event, $entrants);
+  
   return $output;
 }
 
@@ -992,7 +1066,7 @@ function theme_plm_event_details($event, $season=NULL) {
     $output .= "<div class=\"num_players\">$label: $num_players</div>";
     //$output .= theme_plm_event_num_players($event);
     if (user_access('access poker league member content')) {
-      $output .= "<div>Initial Pot: $event->pot_start</div>\n";
+      $output .= "<div>Initial Pot: \$$event->pot_start</div>\n";
       $output .= "<div>Buy-in: \$$event->buyin</div>\n";
       $pot_total = $event->pot_start + $event->buyin * $event->num_players;
       $output .= "<div>Total Pot: \$$pot_total</div>\n";
@@ -1443,4 +1517,67 @@ function theme_plm_results_block($plm_season=NULL, $event=NULL) {
 
 function theme_plm_nav_menu() {
 
+}
+
+function plm_entrants_list($plm_event) {
+  if (!isset($plm_event)) return;
+
+  $season = _get_plm_season($plm_event->sid);
+  $title = "$season->title: $plm_event->title Entrants";
+  drupal_set_title($title);
+
+  $entrants = _get_plm_event_entrants($plm_event->eid);
+  $output .= theme_plm_event_entrants($plm_event, $entrants);
+  return $output;
+}
+
+function theme_plm_event_entrants($plm_event, $entrants) {
+  
+  if (!$entrants && 
+    ($event->finished && !user_access('administer poker league'))) {
+    return '';
+  }
+  
+  $headers = array(
+    '#','Name'
+  );
+  
+  if (!$plm_event->finished && user_access('administer poker league')) {
+    $headers[] = '';
+    popups_add_popups();
+  }
+  
+  if ($entrants && count($entrants)) {
+    $num = 0;
+    foreach ($entrants as $ent) {
+      $rowdata = array(
+        ++$num,
+        $ent->name,
+      );
+      if (!$plm_event->finished && user_access('administer poker league')) {
+        $rowdata[] = 
+          l('edit', "plm/entrants/$ent->entid/edit",
+            array('query' => drupal_get_destination(),
+              'attributes' => array('class' => 'popups-form')))
+          . ' ' . 
+          l('delete', 
+            "plm/entrants/$ent->entid/delete",
+            array('query' => drupal_get_destination(),
+              'attributes' => array('class' => 'popups-form')));
+      }
+      $rows[] = $rowdata;
+    }
+  }
+  
+  if ($rows)
+    $output .= theme('table', $headers, $rows, $attr);
+  if (!$plm_event->finished && user_access('administer poker league')) {
+    $output .= '<div>';
+    $output .= l('Add Entrant', "plm/events/$plm_event->eid/entrants/add",
+               array('query' => drupal_get_destination(),
+                 'attributes' => array('class' => 'popups-form')));
+    $output .= '</div>';
+  }
+  return $output;
+  
 }
