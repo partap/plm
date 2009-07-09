@@ -39,7 +39,7 @@
 require_once drupal_get_path('module', 'plm') .'/plm.inc';
 require_once drupal_get_path('module', 'plm') .'/plm_db.inc';
 require_once drupal_get_path('module', 'plm') .'/plm_file.inc';
-//require_once drupal_get_path('module', 'plm') .'/plm_tablesort.inc';
+require_once drupal_get_path('module', 'plm') .'/plm_node.inc';
 
 
 /*
@@ -268,11 +268,13 @@ function plm_menu() {
     'menu_name' => 'plm',
   );
   $items['plm/players/pid/%plm_player/edit'] = array(
-    'title' => t('Edit'),
-    'description' => 'Edit player details',
-    'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_player_form', 3),
-    'access arguments' => array('administer poker league'),
+    'title'           => t('Edit'),
+    'description'     => 'Edit player details',
+    'page callback'   => 'drupal_get_form',
+    'page arguments'  => array('plm_player_form', 3),
+    'access callback' => 'plm_player_edit_access',
+    'access arguments' => array(3),
+    //'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
 //    'type' => MENU_CALLBACK,
@@ -411,6 +413,11 @@ function plm_game_access($op, $node, $account) {
   return FALSE;
 }
 
+function plm_player_edit_access($player) {
+  return (($GLOBALS['user']->uid == $player->uid) 
+    || user_access('administer poker league'));
+}
+
 function plm_main() {
   //$content .= "<p>Poker League Manager Main Page</p>";
   $items = plm_menu();
@@ -435,7 +442,7 @@ function plm_main() {
 function plm_rankings($plm_season=NULL) {
   if (!isset($plm_season)){
     $sid=variable_get('plm_current_season', 0);
-    $plm_season = _get_plm_season($sid);
+    $plm_season = _plm_get_season($sid);
   }
   if (!isset($plm_season)){
     $output = '<p>No Season Selected<p>';
@@ -464,7 +471,7 @@ function plm_rankings($plm_season=NULL) {
     $header[] = array('data' => t('Winnings'));
   }
   $sid = $plm_season->sid;
-  $players = _get_plm_rankings($sid);
+  $players = _plm_get_rankings($sid);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
     return $output;
@@ -511,7 +518,7 @@ function plm_rankings($plm_season=NULL) {
       'class' => $class);
   }
 
-  $games     = _get_plm_games($plm_season->sid);
+  $games     = _plm_get_games($plm_season->sid);
   $eoy_total  = _plm_get_eoy_total($plm_season, $games);
   $eoy_est    = _plm_get_eoy_est($plm_season, $eoy_total);
   $tenth_est  = _plm_get_est_cutoff_points($plm_season, $tenth);
@@ -531,11 +538,11 @@ function plm_season_title($plm_season) {
 } 
 
 function plm_player_load($pid) {
-  return _get_plm_player($pid);
+  return _plm_get_player($pid);
 }
 
 function plm_entrant_load($entid) {
-  return _get_plm_entrant($entid);
+  return _plm_get_entrant($entid);
 }
 
 function plm_players_list($max_players_per_page=50) {
@@ -544,7 +551,7 @@ function plm_players_list($max_players_per_page=50) {
   $output = '';
   drupal_set_title("All Poker Players");
   //$output .= '<img src="' . url('sites/all/themes/mytheme/images/pokerdogs4.png') . '"/>';
-  $num_players = _get_num_plm_players();
+  $num_players = _plm_get_num_players();
    $num_pages = ceil($num_players/$max_players_per_page);
   // $output .= '<p>';
   // $output .= format_plural($num_players, '1 Player', '@count Players');
@@ -606,7 +613,7 @@ function plm_players_list($max_players_per_page=50) {
     $header[] = array('data' => t(''), 'colspan' => 2);
   }
   $q = tablesort_sql($header);
-  $players = _get_plm_players($q, '', $max_players_per_page);
+  $players = _plm_get_players($q, '', $max_players_per_page);
 
   $resnum = 0;
   $page = $_GET['page'];
@@ -664,9 +671,9 @@ function theme_plm_player_details($player) {
     $header[] = "Winnings";
   }
 
-  $cur_season = _get_plm_season(variable_get('plm_current_season', 0));
+  $cur_season = _plm_get_season(variable_get('plm_current_season', 0));
 
-  $places = _get_plm_results_by_player($player->pid);
+  $places = _plm_get_results_by_player($player->pid);
   if (!isset($places)) return '<p>No places on record.</p>';
   $sid    = NULL;
   $s_points   = array();
@@ -819,7 +826,7 @@ function theme_plm_player_details($player) {
   return $output;
 }
 function plm_season_load($sid) {
-  return _get_plm_season($sid);
+  return _plm_get_season($sid);
 }
 //function plm_season_to_arg($s) {
 //  return $s->sid;
@@ -837,7 +844,7 @@ function plm_seasons_list() {
 /*     print_r('<br>'); */
 /*   } */
   
-  $seasons = _get_plm_seasons();
+  $seasons = _plm_get_seasons();
   if (!isset($seasons)){
     $output = "<p>There are no seasons configured</p>";
     return $output;
@@ -871,7 +878,7 @@ function theme_plm_season($season, $teaser=NULL) {
   //$output .= t("<p>theme_plm_season()</p>");
   $output .= theme_plm_date_range($season, $teaser);
   $label = 'Games';
-  $num_games = _get_num_plm_games($season->sid);
+  $num_games = _plm_get_num_games($season->sid);
   $output .= "<div class=\"plm_game_list\">";
   $output .= "<div class=\"num_games\">$label: $num_games</div>";
   if ($num_games == 0 || $teaser) return $output . '</div>';
@@ -883,7 +890,7 @@ function theme_plm_upcoming_games($season){
   if (!user_access('access poker league member content')) return '';
 
   global $user;
-  $games = _get_upcoming_plm_games($season->sid);
+  $games = _plm_get_upcoming_games($season->sid);
   if (!isset($games)) {
     //$output .= '<p> None scheduled<p>';
     return $output;
@@ -960,7 +967,7 @@ function theme_plm_game_list($season, $teaser) {
     $header[] = '';
   }
   
-  $games = _get_plm_games($season->sid);
+  $games = _plm_get_games($season->sid);
   
   foreach ($games as $game) {
     
@@ -994,14 +1001,14 @@ function theme_plm_game_list($season, $teaser) {
 
 
 function plm_current_season_view() {
-  $season = _get_plm_current_season();
+  $season = _plm_get_current_season();
   return plm_season_view($season);
   
 }
 function plm_season_view($plm_season=NULL) {
   if (!isset($plm_season)){
     $sid=variable_get('plm_current_season', 0);
-    $plm_season = _get_plm_season($sid);
+    $plm_season = _plm_get_season($sid);
   }
   if (!isset($plm_season)){
     $output = '<p>No Season Selected<p>';
@@ -1020,16 +1027,16 @@ function plm_seasons() {
 
 
 function plm_game_load($node) {
-  return _get_plm_game($node);
+  return _plm_get_game($node);
 }
 function plm_game_view($game, $teaser = FALSE, $page = FALSE) {
-  $season = _get_plm_season($game->sid);
+  $season = _plm_get_season($game->sid);
   $title = "$season->title: $game->title";
   drupal_set_title($title);
   $output .= theme_plm_game_details($game);
   if ($teaser) return $output;
   // if (!$game->list_entrants) return $output;
-  // $entrants = _get_plm_game_entrants($game->gid);
+  // $entrants = _plm_get_game_entrants($game->gid);
   // if ($entrants){
   //   $output .= '<h3>Entrants</h3>';
   // }
@@ -1042,7 +1049,7 @@ function theme_plm_game_details($game, $season=NULL) {
   if (isset($season) && $season->sid == $game->sid) 
     $s = $season;
   else 
-    $s = _get_plm_season($game->sid);
+    $s = _plm_get_season($game->sid);
 
   $label = 'Season';
   $title = $s->title;
@@ -1055,7 +1062,7 @@ function theme_plm_game_details($game, $season=NULL) {
   $output .= "<div class=\"pl_game_date\">$label: $datestr</div>";
   //$output .= theme_plm_game_date($game);
   $label = 'Host';
-  $rec = _get_plm_player($game->hid);
+  $rec = _plm_get_player($game->hid);
   $name = $rec->name;
   if (!$name) $name = 'None';
   $output .= "<div class=\"game_host\">$label: $name</div>";
@@ -1084,7 +1091,7 @@ function theme_plm_game_date($game) {
 }
 function theme_plm_game_host($game) {
   $label = 'Host';
-  $rec = _get_plm_player($game->hid);
+  $rec = _plm_get_player($game->hid);
   $name = $rec->name;
   if (!$name) $name = 'None';
   $output = "<div class=\"game_host\">$label: $name</div>";
@@ -1105,9 +1112,9 @@ function theme_plm_game_season($season) {
 }
 
 function plm_result_load($gid, $place) {
-  $res = _get_plm_result($gid, $place);
+  $res = _plm_get_result($gid, $place);
   if (!$res) {
-    $game = _get_plm_game($gid);
+    $game = _plm_get_game($gid);
     $res = _plm_result_new($game, $place);
   }
   return $res;
@@ -1138,7 +1145,7 @@ function _plm_result_row($result) {
 function theme_plm_game_results($game) {
   $gid = $game->gid;
 
-  $results = _get_plm_results($gid);
+  $results = _plm_get_results($gid);
   
   if (!$results && !user_access('administer poker league')){
     return '<p>No Results Posted</p>';
@@ -1219,87 +1226,6 @@ function theme_plm_game_results($game) {
   return $output;
 }
 
-
-// function _theme_plm_table($header, $rows, $attributes = array(), $caption = NULL) {
-//   // Add sticky headers, if applicable.
-//   if (count($header)) {
-//     drupal_add_js('misc/tableheader.js');
-//     // Add 'sticky-enabled' class to the table to identify it for JS.
-//     // This is needed to target tables constructed by this function.
-//     $attributes['class'] = empty($attributes['class']) ? 'sticky-enabled' : ($attributes['class'] .' sticky-enabled');
-//   }
-
-//   $output = '<table'. drupal_attributes($attributes) .">\n";
-
-//   if (isset($caption)) {
-//     $output .= '<caption>'. $caption ."</caption>\n";
-//   }
-
-//   // Format the table header:
-//   if (count($header)) {
-//     $ts = plm_tablesort_init($header);
-//     // HTML requires that the thead tag has tr tags in it follwed by tbody
-//     // tags. Using ternary operator to check and see if we have any rows.
-//     $output .= (count($rows) ? ' <thead><tr>' : ' <tr>');
-//     foreach ($header as $cell) {
-//       $cell = plm_tablesort_header($cell, $header, $ts);
-//       $output .= _theme_table_cell($cell, TRUE);
-//     }
-//     // Using ternary operator to close the tags based on whether or not there are rows
-//     $output .= (count($rows) ? " </tr></thead>\n" : "</tr>\n");
-//   }
-//   else {
-//     $ts = array();
-//   }
-
-//   // Format the table rows:
-//   if (count($rows)) {
-//     $output .= "<tbody>\n";
-//     $flip = array('even' => 'odd', 'odd' => 'even');
-//     $class = 'even';
-//     foreach ($rows as $number => $row) {
-//       $attributes = array();
-
-//       // Check if we're dealing with a simple or complex row
-//       if (isset($row['data'])) {
-//         foreach ($row as $key => $value) {
-//           if ($key == 'data') {
-//             $cells = $value;
-//           }
-//           else {
-//             $attributes[$key] = $value;
-//           }
-//         }
-//       }
-//       else {
-//         $cells = $row;
-//       }
-//       if (count($cells)) {
-//         // Add odd/even class
-//         $class = $flip[$class];
-//         if (isset($attributes['class'])) {
-//           $attributes['class'] .= ' '. $class;
-//         }
-//         else {
-//           $attributes['class'] = $class;
-//         }
-
-//         // Build row
-//         $output .= ' <tr'. drupal_attributes($attributes) .'>';
-//         $i = 0;
-//         foreach ($cells as $cell) {
-//           $cell = plm_tablesort_cell($cell, $header, $ts, $i++);
-//           $output .= _theme_table_cell($cell);
-//         }
-//         $output .= " </tr>\n";
-//       }
-//     }
-//     $output .= "</tbody>\n";
-//   }
-
-//   $output .= "</table>\n";
-//   return $output;
-// }
 
 function plm_block($op = 'list', $delta = 0, $edit = array()) {
   //drupal_set_message("plm_block op=$op delta=$delta edit=" . print_r($edit, TRUE));
@@ -1396,9 +1322,9 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   $now = floor((time() + $tz_offset)/86400) * 86400;
 
   // get latest game that is finished
-  $game = _get_latest_plm_game($plm_season->sid, TRUE); 
+  $game = _plm_get_latest_game($plm_season->sid, TRUE); 
   if (isset($game)){
-    $results = _get_plm_results($game->gid);
+    $results = _plm_get_results($game->gid);
     $update_age = round(($now - $game->game_date) / 86400);
   }
   
@@ -1410,7 +1336,7 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   //   //array('data' => t('Places')),
   // );
 
-  $players = _get_plm_rankings($plm_season->sid);
+  $players = _plm_get_rankings($plm_season->sid);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
     return $output;
@@ -1474,15 +1400,15 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
 function theme_plm_results_block($plm_season=NULL, $game=NULL) {
   if (!isset($game)) {
     if (!isset($plm_season)) 
-      //$plm_season = _get_plm_season(variable_get('plm_current_season', 0));
+      //$plm_season = _plm_get_season(variable_get('plm_current_season', 0));
       $sid = variable_get('plm_current_season', 0);
     else 
       $sid = $plm_season;
     if (!$sid) return '';
-    $game = _get_latest_plm_game($sid, TRUE);
+    $game = _plm_get_latest_game($sid, TRUE);
     if (!isset($game)) return '';
   }
-  $results = _get_plm_results($game->gid);
+  $results = _plm_get_results($game->gid);
   //drupal_set_message('theme_plm_results_block() <br>'
   //  . 'season=<pre>' . print_r( $sid , TRUE) . '</pre>'
   //  . 'game=<pre>' . print_r( $game , TRUE) . '</pre>'
@@ -1522,11 +1448,11 @@ function theme_plm_nav_menu() {
 function plm_entrants_list($plm_game) {
   if (!isset($plm_game)) return;
 
-  $season = _get_plm_season($plm_game->sid);
+  $season = _plm_get_season($plm_game->sid);
   $title = "$season->title: $plm_game->title Entrants";
   drupal_set_title($title);
 
-  $entrants = _get_plm_game_entrants($plm_game->gid);
+  $entrants = _plm_get_game_entrants($plm_game->gid);
   $output .= theme_plm_game_entrants($plm_game, $entrants);
   return $output;
 }

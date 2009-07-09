@@ -96,6 +96,11 @@ function plm_schema() {
         'type' => 'int', 'size' => 'tiny',
         'not null' => TRUE, 'default' => 0
       ),
+      'announced' => array(
+        'description' => 'boolean: set when the time and place for the game are decided',
+        'type' => 'int', 'size' => 'tiny',
+        'not null' => TRUE, 'default' => 0
+      ),
       'finished' => array(
         'description' => 'boolean: true if the results have been finalized',
         'type' => 'int', 'size' => 'tiny',

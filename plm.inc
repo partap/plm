@@ -65,20 +65,20 @@ function _plm_rules_default_payout($game, $place) {
 }
 
 function _plm_get_est_cutoff_points($plm_season, $tenth) {
-  $num_games_finished = _get_num_plm_games($plm_season->sid, "finished != 0");
-  $num_games_total    = _get_plm_season_num_games($plm_season);
+  $num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
+  $num_games_total    = _plm_get_season_num_games($plm_season);
   return round($tenth*$num_games_total/$num_games_finished);
 }
 
 function _plm_get_eoy_est($plm_season, $eoy_total) {
-  $num_games_finished = _get_num_plm_games($plm_season->sid, "finished != 0");
-  $num_games_total    = _get_plm_season_num_games($plm_season);
+  $num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
+  $num_games_total    = _plm_get_season_num_games($plm_season);
   return round($eoy_total*$num_games_total/$num_games_finished);
 }
 
 // Temporarily hardcoded
 function _plm_get_eoy_total($plm_season, $games) {
-  //$num_games_finished = _get_num_plm_games($plm_season->sid, "finished != 0");
+  //$num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
   $total = 0;
   foreach ($games as $g) {
     $total += $g->eoy_rake;
@@ -87,7 +87,7 @@ function _plm_get_eoy_total($plm_season, $games) {
 }
 
 // Temporarily hardcoded
-function _get_plm_season_num_games($plm_season) {
+function _plm_get_season_num_games($plm_season) {
   switch ($plm_season->title) {
     case 'Season 5': 
     case 'Season 6': 

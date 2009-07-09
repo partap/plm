@@ -30,7 +30,7 @@ function plm_settings() {
       0 => t('None'),
     ),
   );
-  $seasons = _get_plm_seasons();
+  $seasons = _plm_get_seasons();
   if (isset($seasons)) {
     foreach ($seasons as $s) {
       $form['plm_current_season']['#options'][$s->sid] = $s->title;
@@ -210,7 +210,7 @@ function plm_season_form_validate($form, &$form_state) {
   if (strlen($title) == 0) 
     form_set_error('title', 'Season Title is required');
 
-  $rec = _get_plm_season_by_title($title);
+  $rec = _plm_get_season_by_title($title);
 
   if ($rec && $rec->sid != $sid) 
     form_set_error(
@@ -239,8 +239,8 @@ function plm_season_form_submit($form, &$form_state) {
     $season->end_date = strtotime($endstr);
 
 
-  if ($sid) $res = _update_plm_season($season);
-  else $res = _insert_plm_season($season);
+  if ($sid) $res = _plm_update_season($season);
+  else $res = _plm_insert_season($season);
 
   if ($res) {
     drupal_set_message(
@@ -266,7 +266,7 @@ function plm_season_form_submit($form, &$form_state) {
     $rec->title      = $prefix . ' ' . ($game_num+$i);
     $rec->game_date = $base_date + (60*60*24*7 * $i);
     $rec->buyin      = variable_get('plm_default_buyin', 10);
-    _insert_plm_game($rec);
+    _plm_insert_game($rec);
   }
   drupal_set_message(
     t("Created @num_weeks new games for <i>@title</i>.", 
@@ -294,10 +294,12 @@ function plm_season_confirm_delete_submit($form, &$form_state) {
   $form_state['redirect'] = 'plm/seasons';
 }
 function plm_season_delete($sid) {
-  return _delete_plm_season($sid);
+  return _plm_delete_season($sid);
 }
 
 function plm_player_form(&$form_state, $player=NULL) {
+  //global $user;
+  //drupal_set_message('<pre>' . print_r($user, TRUE) . '</pre>');
   if ($player){
     drupal_set_title(t('Edit Player'));
     $form['_player'] = array('#type' => 'value', '#value' => $player);
@@ -305,20 +307,36 @@ function plm_player_form(&$form_state, $player=NULL) {
   else{
     drupal_set_title(t('New Player'));
   }
+  $form['#validate'][] = 'plm_player_form_validate';
   $form['#attributes'] = array('enctype' => "multipart/form-data");
   $form['name'] = array(
     '#type' => 'textfield',
     '#title' => 'Player Name',
+    '#size'               => 20,
+    '#maxlength'          => 60,
     '#default_value' => $player->name,
     '#required' => TRUE,
   );
 
-  // $form['userref'] = array(
-  //   '#type'               => 'userreference_autocomplete',
-  //   '#title'              => 'User Account',                 
-  //   '#field_name'         => 'field_chump',
-  // );
-
+  if ($player->uid){
+    $player_user = user_load($player->uid);
+  }
+  // Link plm_player to a drupal user account, if it exists
+  if (user_access('administer poker league')){
+    $form['uid'] = array(
+      '#type'  => 'value',
+      '#value' => $player->uid
+    );
+    $form['username'] = array(
+      '#type'               => 'textfield',
+      '#title'              => 'User Account',
+      '#size'               => 20,
+      '#maxlength'          => 60,
+      '#autocomplete_path'  => 'user/autocomplete',                  
+      '#default_value'      => $player_user->name,
+    );
+  }
+  
   // check whether the picture directory exists:
   $picture_path = file_create_path(variable_get('plm_picture_path', 'plm_pictures'));
   file_check_directory($picture_path, 1, 'plm_picture_path');
@@ -352,7 +370,7 @@ function plm_player_form(&$form_state, $player=NULL) {
       '#title' => t('Upload picture'), 
       //'#size' => 30, 
       '#description' => t(
-        'Your virtual face or picture. '
+        'Your player profile picture. '
         . 'Maximum dimensions are %dimensions and the maximum size is %size kB.', array(
           '%dimensions' => variable_get('plm_picture_dimensions', '250x250'), 
           '%size'       => variable_get('plm_picture_file_size', '100'))
@@ -365,21 +383,31 @@ function plm_player_form(&$form_state, $player=NULL) {
     '#value' => 'Submit',
     '#weight' => 1000,
   );
+  //drupal_set_message(print_r('<pre>'.$form['#validate'], TRUE).'</pre>');
   return $form;  
 }
 function plm_player_form_validate($form, &$form_state) {
   $name = trim($form_state['values']['name']);
   $pid  = $form_state['values']['_player']->pid;
-  
+
   if (strlen($name) == 0) 
     form_set_error('name', 'Player Name is required');
-
-  $rec = _get_plm_player_by_name($name);
+  $rec = _plm_get_player_by_name($name);
 
   if ($rec && $rec->pid != $pid) 
     form_set_error(
       'name', t("There is already a player called <i>@name</i>.", 
                 array('@name' => $rec->name)));
+  $username = trim($form_state['values']['username']);
+  if (strlen($username) != 0){
+    $account = user_load(array('name' => $username));
+    if (!$account) {
+      form_set_error('username', 'Invalid user account name');
+    }
+    else 
+      $form_state['values']['uid'] = $account->uid;
+  }
+
 }
 function plm_validate_picture($form, &$form_state) {
   // If required, validate the uploaded picture.
@@ -420,7 +448,7 @@ function plm_player_form_submit($form, &$form_state) {
   $player->name = trim($form_state['values']['name']);
 
   // Delete picture if requested, and if no replacement picture was given.
-  if (!empty($form_state['picture_delete'])) {
+  if (!empty($form_state['values']['picture_delete'])) {
     if ($player->picture && file_exists($player->picture)) {
       file_delete($player->picture);
     }
@@ -430,9 +458,14 @@ function plm_player_form_submit($form, &$form_state) {
     $player->picture = $form_state['values']['plm_picture'];
   }
 
-  if ($pid) _update_plm_player($player);
-  else _insert_plm_player($player);
+  if (user_access('administer poker league')){
+    $player->uid = $form_state['values']['uid'];
+    drupal_set_message("Linking with uid $player->uid");
+  }
 
+  if ($pid) _plm_update_player($player);
+  else _plm_insert_player($player);
+  
   drupal_set_message(
     t("Saved player <i>@name</i>.", array('@name' => $player->name)));
   //$form_state['redirect'] = 'plm/players';
@@ -459,7 +492,7 @@ function plm_player_confirm_delete_submit($form, &$form_state) {
   $form_state['redirect'] = 'plm/players';
 }
 function plm_player_delete($pid) {
-  return _delete_plm_player($pid);
+  return _plm_delete_player($pid);
 }
 
 function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
@@ -511,7 +544,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   $game_date = $oldrec->game_date;
   if (!$game_date){
     //$game_date = gmmktime();
-    $latest_game = _get_latest_plm_game($sid);
+    $latest_game = _plm_get_latest_game($sid);
     $last_date = $latest_game->game_date;
     if (!$last_date) $game_date = $season->start_date;
     else {
@@ -535,7 +568,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   /*   '#value' => $content, */
   /* ); */
   if ($oldrec->hid){
-    $rec = _get_plm_player($oldrec->hid);
+    $rec = _plm_get_player($oldrec->hid);
     $host = $rec->name;
   }
   $form['host_name'] = array(
@@ -626,7 +659,7 @@ function plm_game_form_validate($form, &$form_state) {
 
   $host = check_plain(trim($form_state['values']['host_name']));
   if (strlen($host) > 0){ 
-    $rec = _get_plm_player_by_name($host);
+    $rec = _plm_get_player_by_name($host);
     if (!$rec)
       form_set_error(
         'host', t("There is no registered player named <i>@name</i>.", 
@@ -638,7 +671,7 @@ function plm_game_form_validate($form, &$form_state) {
     form_set_error('title', 'Game Title is required');
 
   $sid = $form_state['values']['sid'];
-  $rec = _get_plm_game_by_title($title, $sid);
+  $rec = _plm_get_game_by_title($title, $sid);
 
   $gid  = $form_state['values']['gid'];
   if ($rec && $rec->gid != $gid) 
@@ -648,7 +681,7 @@ function plm_game_form_validate($form, &$form_state) {
   
   $list_entrants = $form_state['values']['list_entrants'];
   if ($list_entrants){
-    $num_entrants = _get_num_plm_game_entrants($gid);
+    $num_entrants = _plm_get_num_game_entrants($gid);
     if ($num_entrants > 0)
       $form_state['values']['num_players'] = $num_entrants;
   }
@@ -666,12 +699,12 @@ function plm_game_form_submit($form, &$form_state) {
   
   $host = check_plain(trim($form_state['values']['host_name']));
   if (strlen($host) > 0){ 
-    $p = _get_plm_player_by_name($host);
+    $p = _plm_get_player_by_name($host);
     $rec->hid = $p->pid;
   }
 
-  if ($rec->gid) $res = _update_plm_game($rec);
-  else $res = _insert_plm_game($rec);
+  if ($rec->gid) $res = _plm_update_game($rec);
+  else $res = _plm_insert_game($rec);
   
   if ($res) {
     drupal_set_message(
@@ -742,7 +775,7 @@ function plm_result_form_validate($form, &$form_state) {
 
   
   if (strlen($name) > 0) 
-    $rec = _get_plm_player_by_name($name);
+    $rec = _plm_get_player_by_name($name);
   $pid = $rec->pid;
   if (!$pid) {
     if (!$new_player) {
@@ -779,11 +812,11 @@ function plm_result_form_submit($form, &$form_state) {
   if ($new_player){
     $rec = new stdClass();
     $rec->name = $name;
-    $r->pid = _insert_plm_player($rec);
+    $r->pid = _plm_insert_player($rec);
   }
-  $oldrec = _get_plm_result($r->gid, $r->place);
+  $oldrec = _plm_get_result($r->gid, $r->place);
   if (!$oldrec) {
-    if (_insert_plm_result($r)) {
+    if (_plm_insert_result($r)) {
       drupal_set_message(
         t("New result: %name in %place place (%gid)", 
           array('%name' => $name,
@@ -792,7 +825,7 @@ function plm_result_form_submit($form, &$form_state) {
     }
   }
   else {
-    if (_update_plm_result($r)) {
+    if (_plm_update_result($r)) {
       drupal_set_message(
         t("Saved updated result for %name in %place place (%gid)", 
           array('%name' => $name,
@@ -829,7 +862,7 @@ function plm_result_confirm_delete_submit($form, &$form_state) {
   $form_state['redirect'] = "plm/games/$result->gid";
 }
 function plm_result_delete($gid,$place) {
-  return _delete_plm_result($gid, $place);
+  return _plm_delete_result($gid, $place);
 }
 
 
@@ -839,7 +872,7 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
     drupal_set_title("Edit Entrant");
     $game = plm_game_load($oldrec->gid);
     $form['_entrant'] = array('#type' => 'value', '#value' => $oldrec);
-    $player = _get_plm_player($oldrec->pid);
+    $player = _plm_get_player($oldrec->pid);
   }
   else {
     drupal_set_title("New Entrant");
@@ -897,7 +930,7 @@ function plm_entrant_form_validate($form, &$form_state) {
   $name   = trim($form_state['values']['name']);
   
   if (strlen($name) > 0) 
-    $rec = _get_plm_player_by_name($name);
+    $rec = _plm_get_player_by_name($name);
   $pid = $rec->pid;
   if (!$pid) {
     if (!$new_player) {
@@ -913,7 +946,7 @@ function plm_entrant_form_validate($form, &$form_state) {
                   array('@name' => $name)));      
     }
   }
-  $entrant = _find_plm_entrant($gid, $pid);
+  $entrant = _plm_find_entrant($gid, $pid);
   if ($entrant){
    form_set_error(
         'name', t("<i>@name</i> is already entered in this game.", 
@@ -933,18 +966,18 @@ function plm_entrant_form_submit($form, &$form_state) {
   if ($new_player){
     $rec = new stdClass();
     $rec->name = $name;
-    $r->pid = _insert_plm_player($rec);
+    $r->pid = _plm_insert_player($rec);
   }
   if (!$oldrec) {
-    if (_insert_plm_entrant($r)) {
-      _update_num_plm_game_entrants($r->gid);
+    if (_plm_insert_entrant($r)) {
+      _plm_update_num_game_entrants($r->gid);
       drupal_set_message(
         t("Added entrant: %name", 
           array('%name' => $name)));
     }
   }
   else {
-    if (_update_plm_entrant($r)) {
+    if (_plm_update_entrant($r)) {
       drupal_set_message(
         t("SUpdated entrant: %name",
           array('%name' => $name)));
@@ -977,12 +1010,12 @@ function plm_entrant_confirm_delete(&$form_state, $entrant) {
 function plm_entrant_confirm_delete_submit($form, &$form_state) {
   $entrant = $form_state['values']['_entrant'];
   if (plm_entrant_delete($entrant->entid)){
-    _update_num_plm_game_entrants($r->gid);
+    _plm_update_num_game_entrants($r->gid);
     drupal_set_message(t("The entrant has been deleted."));
   }
   $form_state['redirect'] = "plm/games/$entrant->gid/entrants";
 }
 function plm_entrant_delete($entid) {
-  return _delete_plm_entrant($entid);
+  return _plm_delete_entrant($entid);
 }
 

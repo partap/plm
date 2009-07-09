@@ -18,7 +18,7 @@ function plm_import_form(){
       0 => t('None'),
     ),
   );
-  $seasons = _get_plm_seasons();
+  $seasons = plm_get_seasons();
   if (isset($seasons)) {
     foreach ($seasons as $s) {
       $form['sid']['#options'][$s->sid] = $s->title;
@@ -101,7 +101,7 @@ function plm_import_form_submit($form, &$form_state)  {
           $rec->num_players = $rec->cash_total / $rec->buyin;
         }
         $rec->finished = 1;
-        _import_plm_game($rec, $overwrite);
+        _plm_import_game($rec, $overwrite);
         $rec = NULL;
         $curplace = 0;
       }
@@ -188,30 +188,30 @@ function plm_import_form_submit($form, &$form_state)  {
 }
 
 
-function _import_plm_game($rec, $overwrite) {
+function _plm_import_game($rec, $overwrite) {
   if ($rec->hostname){
-    $host = _get_plm_player_by_name($rec->hostname);
+    $host = plm_get_player_by_name($rec->hostname);
     if (!$host) {
       $host = new stdClass;
       $host->name = $rec->hostname;
-      $host->pid = _insert_plm_player($host);
+      $host->pid = _plm_insert_player($host);
     }
     $rec->hid = $host->pid;
   }
 
-  $games = _get_plm_games_by_date($rec->sid, $rec->game_date);
+  $games = plm_get_games_by_date($rec->sid, $rec->game_date);
   if ($games) {
     // Match this game
     $game_exists = 1;
     $rec->gid = $games[0]->gid;
     //$rec->['game'] = 1;
     if ($overwrite) {
-      _update_plm_game($rec);
+      _plm_update_game($rec);
     }
   }
   else {
     $game_exists = 0;
-    $rec->gid = _insert_plm_game($rec);
+    $rec->gid = _plm_insert_game($rec);
   }
 
   
@@ -239,11 +239,11 @@ function _import_plm_game($rec, $overwrite) {
 
   // Import results and add new players, if necessary
   for ($i=1; isset($rec->place[$i]) ; $i++) {
-    $player = _get_plm_player_by_name($rec->place[$i]);
+    $player = plm_get_player_by_name($rec->place[$i]);
     if (!$player) {
       $player = new stdClass;
       $player->name = $rec->place[$i];
-      $player->pid = _insert_plm_player($player);
+      $player->pid = _plm_insert_player($player);
       // handle errors!
     }
     $newres->gid    = $rec->gid;
@@ -252,12 +252,12 @@ function _import_plm_game($rec, $overwrite) {
     $newres->points = $rec->points[$i];
     $newres->pid    = $player->pid;
     
-    $oldres = _get_plm_result($rec->gid, $i);
+    $oldres = plm_get_result($rec->gid, $i);
     if ($oldres) {
-      if ($overwrite) _update_plm_result($newres);
+      if ($overwrite) _plm_update_result($newres);
     }
     else{
-      _insert_plm_result($newres);
+      _plm_insert_result($newres);
     }
     $rows[]  = array( 
       array('data' => _plm_format_place($i), 'header' => 1),
