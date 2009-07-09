@@ -12,8 +12,8 @@
  *   - Players
  *     - list all, browse 
  *   - Results (browse past games, other seasons)
- *     - games listed under plm/events/%event because we don't want to need
- *       the sid AND the eid.  Once we load the event, 
+ *     - games listed under plm/games/%game because we don't want to need
+ *       the sid AND the gid.  Once we load the game, 
  *       we have sid and so we can either rewrite breadcrumbs,
  *       or use a custom seasons browsing menu or selector...investigate ?destination=xxx...
  *   - Schedule (upcoming games)
@@ -140,11 +140,11 @@ function plm_menu() {
     'access arguments' => array('access poker league content'),
     'type' => MENU_LOCAL_TASK,
   );
-  $items['plm/seasons/%plm_season/newevent'] = array(
-    'title' => 'New Event',
-    'description' => 'Set up a new event',
+  $items['plm/seasons/%plm_season/newgame'] = array(
+    'title' => 'New Game',
+    'description' => 'Set up a new game',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_event_form',  NULL, 2),
+    'page arguments' => array('plm_game_form',  NULL, 2),
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
@@ -152,34 +152,34 @@ function plm_menu() {
   );
 
 
-  $items['plm/events/%plm_event'] = array(
-    'title' => t('Event'),
-    'description' => 'View the details of a poker event',
-    'page callback' => 'plm_event_view',
+  $items['plm/games/%plm_game'] = array(
+    'title' => t('Game'),
+    'description' => 'View the details of a poker game',
+    'page callback' => 'plm_game_view',
     'page arguments' => array(2),
     'access arguments' => array('access poker league content'),
     'type' => MENU_NORMAL_ITEM,
     'menu_name' => 'plm',
   );
-  $items['plm/events/%plm_event/view'] = array(
+  $items['plm/games/%plm_game/view'] = array(
     'title'  => t('View'),
     'weight' => -1,
     'type'   => MENU_DEFAULT_LOCAL_TASK,
     'menu_name' => 'plm',
   );
-  $items['plm/events/%plm_event/edit'] = array(
+  $items['plm/games/%plm_game/edit'] = array(
     'title' => t('Edit'),
-    'description' => 'Edit the details of a poker event',
+    'description' => 'Edit the details of a poker game',
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_event_form', 2),
+    'page arguments' => array('plm_game_form', 2),
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
     'file' => 'plm_admin.inc',
   );
-  $items['plm/events/%plm_event/entrants'] = array(
+  $items['plm/games/%plm_game/entrants'] = array(
     'title' => t('Entrants'),
-    'description' => 'View the entrants of a poker event',
+    'description' => 'View the entrants of a poker game',
     'page callback' => 'plm_entrants_list',
     'page arguments' => array(2),
     'access arguments' => array('access poker league content'),
@@ -187,7 +187,7 @@ function plm_menu() {
     'menu_name' => 'plm',
     'file' => 'plm.inc',
   );
-  $items['plm/events/%plm_event/entrants/list'] = array(
+  $items['plm/games/%plm_game/entrants/list'] = array(
     'title'  => t('List'),
     'weight' => -1,
     'type'   => MENU_DEFAULT_LOCAL_TASK,
@@ -195,9 +195,9 @@ function plm_menu() {
   );
 
 
-  $items['plm/events/%plm_event/entrants/add'] = array(
+  $items['plm/games/%plm_game/entrants/add'] = array(
     'title' => 'Add Entrant',
-    'description' => 'Register a player for this event',
+    'description' => 'Register a player for this game',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_entrant_form',  NULL, 2),
     'access arguments' => array('administer poker league'),
@@ -207,7 +207,7 @@ function plm_menu() {
   );
   $items['plm/entrants/%plm_entrant/edit'] = array(
     'title' => t('Edit'),
-    'description' => 'Edit an event entrant',
+    'description' => 'Edit an game entrant',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_entrant_form', 2),
     'access arguments' => array('administer poker league'),
@@ -217,7 +217,7 @@ function plm_menu() {
   );
   $items['plm/entrants/%plm_entrant/delete'] = array(
     'title' => t('Delete'),
-    'description' => 'Delete an event entrant',
+    'description' => 'Delete an game entrant',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_entrant_confirm_delete', 2),
     'access arguments' => array('administer poker league'),
@@ -400,7 +400,7 @@ function plm_access($op, $node, $account) {
   return FALSE;
 }
 
-function plm_event_access($op, $node, $account) {
+function plm_game_access($op, $node, $account) {
   if ($op == 'create' || $op == 'update' || $op == 'delete') {
     return user_access('administer poker league', $account);
   }
@@ -511,8 +511,8 @@ function plm_rankings($plm_season=NULL) {
       'class' => $class);
   }
 
-  $events     = _get_plm_events($plm_season->sid);
-  $eoy_total  = _plm_get_eoy_total($plm_season, $events);
+  $games     = _get_plm_games($plm_season->sid);
+  $eoy_total  = _plm_get_eoy_total($plm_season, $games);
   $eoy_est    = _plm_get_eoy_est($plm_season, $eoy_total);
   $tenth_est  = _plm_get_est_cutoff_points($plm_season, $tenth);
   
@@ -654,7 +654,7 @@ function theme_plm_player_details($player) {
 
   $header = array(
     "Season",
-    "Event",
+    "Game",
     "Host",
     "Place", 
     "Points",
@@ -708,7 +708,7 @@ function theme_plm_player_details($player) {
     $rowdata = array(
       $s->title,
       //$r->sid,
-      l($r->title, "plm/events/$r->eid"), 
+      l($r->title, "plm/games/$r->gid"), 
       $r->host,
       _plm_format_place($r->place),
       $r->points,
@@ -870,31 +870,31 @@ function plm_seasons_list() {
 function theme_plm_season($season, $teaser=NULL) {
   //$output .= t("<p>theme_plm_season()</p>");
   $output .= theme_plm_date_range($season, $teaser);
-  $label = 'Events';
-  $num_events = _get_num_plm_events($season->sid);
-  $output .= "<div class=\"plm_event_list\">";
-  $output .= "<div class=\"num_events\">$label: $num_events</div>";
-  if ($num_events == 0 || $teaser) return $output . '</div>';
-  $output .= theme_plm_upcoming_events($season);
-  $output .= theme_plm_event_list($season, $teaser);
+  $label = 'Games';
+  $num_games = _get_num_plm_games($season->sid);
+  $output .= "<div class=\"plm_game_list\">";
+  $output .= "<div class=\"num_games\">$label: $num_games</div>";
+  if ($num_games == 0 || $teaser) return $output . '</div>';
+  $output .= theme_plm_upcoming_games($season);
+  $output .= theme_plm_game_list($season, $teaser);
   return $output;
 }
-function theme_plm_upcoming_events($season){
+function theme_plm_upcoming_games($season){
   if (!user_access('access poker league member content')) return '';
 
   global $user;
-  $events = _get_upcoming_plm_events($season->sid);
-  if (!isset($events)) {
+  $games = _get_upcoming_plm_games($season->sid);
+  if (!isset($games)) {
     //$output .= '<p> None scheduled<p>';
     return $output;
   }
   $today = time() + $user->timezone;
   $fmt = 'D, M j';
   $found_upcoming=FALSE;
-  foreach ($events as $e) {
+  foreach ($games as $e) {
     //if (!($e->hid)) continue;
-    $datestr = format_date($e->event_date, 'custom', $fmt);
-    $days = ($e->event_date - $today) / 86400;
+    $datestr = format_date($e->game_date, 'custom', $fmt);
+    $days = ($e->game_date - $today) / 86400;
     $daystr=NULL;
     if ($days == 0) $daystr = 'Tonight';
     else if ($days == 1) $daystr = 'Tomorrow';
@@ -906,7 +906,7 @@ function theme_plm_upcoming_events($season){
     // }
     if (!$found_upcoming){
       $output .= '<div class="upcoming">';
-      $output .= "<h2>Upcoming events:</h2>";
+      $output .= "<h2>Upcoming games:</h2>";
       $found_upcoming = TRUE;
     }
     $output .= "<hr/>\n";
@@ -949,10 +949,10 @@ function theme_plm_date_range($season, $teaser) {
   return $output;// . "</div>";
 }
 
-function theme_plm_event_list($season, $teaser) {
-  //$output = '<p>"theme_plm_event_list"</p>';
+function theme_plm_game_list($season, $teaser) {
+  //$output = '<p>"theme_plm_game_list"</p>';
 
-  $header = array('Event', 'Date', 'Host', 
+  $header = array('Game', 'Date', 'Host', 
             array('data' => 'Entrants',
             'class' => 'numcol'), 
             'Winner', '');
@@ -960,29 +960,29 @@ function theme_plm_event_list($season, $teaser) {
     $header[] = '';
   }
   
-  $events = _get_plm_events($season->sid);
+  $games = _get_plm_games($season->sid);
   
-  foreach ($events as $event) {
+  foreach ($games as $game) {
     
-    //$date_str = date("m-d-Y", $event->event_date);
-    //$date_str = date("n/j/Y", $event->event_date);
-    //$date_str = date("D, M j Y g:iA", $event->event_date);
-    $date_str = date("D, M j Y", $event->event_date);
+    //$date_str = date("m-d-Y", $game->game_date);
+    //$date_str = date("n/j/Y", $game->game_date);
+    //$date_str = date("D, M j Y g:iA", $game->game_date);
+    $date_str = date("D, M j Y", $game->game_date);
     $rowdata = array(
-      l($event->title, "plm/events/$event->eid"),
+      l($game->title, "plm/games/$game->gid"),
       $date_str,
-      $event->host,
+      $game->host,
       array(
-        'data' => $event->num_players ? $event->num_players : '',
+        'data' => $game->num_players ? $game->num_players : '',
         'class' => 'numcol'),
-      $event->wid ? l($event->winner, "plm/players/pid/$event->wid") : '',
-      $event->finished ? l(t('results'), "plm/events/$event->eid") : '',
+      $game->wid ? l($game->winner, "plm/players/pid/$game->wid") : '',
+      $game->finished ? l(t('results'), "plm/games/$game->gid") : '',
     );
     if (user_access('administer poker league')) {
-      if ($event->finished)
+      if ($game->finished)
         $rowdata[] = '';
       else
-        $rowdata[] = l(t('edit'), "plm/events/$event->eid/edit");
+        $rowdata[] = l(t('edit'), "plm/games/$game->gid/edit");
     }
     $rows[] = $rowdata;
   }
@@ -1019,84 +1019,84 @@ function plm_seasons() {
 }
 
 
-function plm_event_load($node) {
-  return _get_plm_event($node);
+function plm_game_load($node) {
+  return _get_plm_game($node);
 }
-function plm_event_view($event, $teaser = FALSE, $page = FALSE) {
-  $season = _get_plm_season($event->sid);
-  $title = "$season->title: $event->title";
+function plm_game_view($game, $teaser = FALSE, $page = FALSE) {
+  $season = _get_plm_season($game->sid);
+  $title = "$season->title: $game->title";
   drupal_set_title($title);
-  $output .= theme_plm_event_details($event);
+  $output .= theme_plm_game_details($game);
   if ($teaser) return $output;
-  // if (!$event->list_entrants) return $output;
-  // $entrants = _get_plm_event_entrants($event->eid);
+  // if (!$game->list_entrants) return $output;
+  // $entrants = _get_plm_game_entrants($game->gid);
   // if ($entrants){
   //   $output .= '<h3>Entrants</h3>';
   // }
-  // $output .= theme_plm_event_entrants($event, $entrants);
+  // $output .= theme_plm_game_entrants($game, $entrants);
   
   return $output;
 }
 
-function theme_plm_event_details($event, $season=NULL) {
-  if (isset($season) && $season->sid == $event->sid) 
+function theme_plm_game_details($game, $season=NULL) {
+  if (isset($season) && $season->sid == $game->sid) 
     $s = $season;
   else 
-    $s = _get_plm_season($event->sid);
+    $s = _get_plm_season($game->sid);
 
   $label = 'Season';
   $title = $s->title;
   $output .= "$label: " . l(t("@title", array('@title'=>$title)),
                            "plm/seasons/$s->sid");
-  //$output .= theme_plm_event_season($s);
-  $label = 'Event Date';
+  //$output .= theme_plm_game_season($s);
+  $label = 'Game Date';
   $fmt = 'D, M j Y';
-  $datestr = date($fmt, $event->event_date);
-  $output .= "<div class=\"pl_event_date\">$label: $datestr</div>";
-  //$output .= theme_plm_event_date($event);
+  $datestr = date($fmt, $game->game_date);
+  $output .= "<div class=\"pl_game_date\">$label: $datestr</div>";
+  //$output .= theme_plm_game_date($game);
   $label = 'Host';
-  $rec = _get_plm_player($event->hid);
+  $rec = _get_plm_player($game->hid);
   $name = $rec->name;
   if (!$name) $name = 'None';
-  $output .= "<div class=\"event_host\">$label: $name</div>";
-  //$output .= theme_plm_event_host($event);
-  if ($event->num_players){
+  $output .= "<div class=\"game_host\">$label: $name</div>";
+  //$output .= theme_plm_game_host($game);
+  if ($game->num_players){
     $label = 'Entrants';
-    $num_players = $event->num_players;
+    $num_players = $game->num_players;
     $output .= "<div class=\"num_players\">$label: $num_players</div>";
-    //$output .= theme_plm_event_num_players($event);
+    //$output .= theme_plm_game_num_players($game);
     if (user_access('access poker league member content')) {
-      $output .= "<div>Initial Pot: \$$event->pot_start</div>\n";
-      $output .= "<div>Buy-in: \$$event->buyin</div>\n";
-      $pot_total = $event->pot_start + $event->buyin * $event->num_players;
+      $output .= "<div>Initial Pot: \$$game->pot_start</div>\n";
+      $output .= "<div>Buy-in: \$$game->buyin</div>\n";
+      $pot_total = $game->pot_start + $game->buyin * $game->num_players;
       $output .= "<div>Total Pot: \$$pot_total</div>\n";
     }
-    $output .= theme_plm_event_results($event);
+    $output .= theme_plm_game_results($game);
   }
   return $output;
 }
-function theme_plm_event_date($event) {
-  $label = 'Event Date';
+function theme_plm_game_date($game) {
+  $label = 'Game Date';
   $fmt = 'D, M j Y';
-  $datestr = date($fmt, $event->event_date);
-  $output .= "<div class=\"pl_event_date\">$label: $datestr</div>";
+  $datestr = date($fmt, $game->game_date);
+  $output .= "<div class=\"pl_game_date\">$label: $datestr</div>";
   return $output;
 }
-function theme_plm_event_host($event) {
+function theme_plm_game_host($game) {
   $label = 'Host';
-  $rec = _get_plm_player($event->hid);
+  $rec = _get_plm_player($game->hid);
   $name = $rec->name;
   if (!$name) $name = 'None';
-  $output = "<div class=\"event_host\">$label: $name</div>";
+  $output = "<div class=\"game_host\">$label: $name</div>";
   return $output;
 }
-function theme_plm_event_num_players($event) {
+function theme_plm_game_num_players($game) {
   $label = 'Entrants';
-  $num_players = $event->num_players;
+  $num_players = $game->num_players;
   $output = "<div class=\"num_players\">$label: $num_players</div>";
   return $output;
 }
-function theme_plm_event_season($season) {
+function theme_plm_game_season($season) {
   $label = 'Season';
   $title = $season->title;
   $output = "$label: " . l(t("@title", array('@title'=>$title)),
@@ -1104,20 +1104,20 @@ function theme_plm_event_season($season) {
   return $output;
 }
 
-function plm_result_load($eid, $place) {
-  $res = _get_plm_result($eid, $place);
+function plm_result_load($gid, $place) {
+  $res = _get_plm_result($gid, $place);
   if (!$res) {
-    $event = _get_plm_event($eid);
-    $res = _plm_result_new($event, $place);
+    $game = _get_plm_game($gid);
+    $res = _plm_result_new($game, $place);
   }
   return $res;
 }
-// blank event result
-function _plm_result_new($event, $place) {
-  $res->eid = $event->eid;
+// blank game result
+function _plm_result_new($game, $place) {
+  $res->gid = $game->gid;
   $res->place  = $place;
-  $res->points = _plm_rules_default_points($event, $place);
-  $res->cash   = _plm_rules_default_payout($event, $place);
+  $res->points = _plm_rules_default_points($game, $place);
+  $res->cash   = _plm_rules_default_payout($game, $place);
   return $res;
 }
 
@@ -1135,10 +1135,10 @@ function _plm_result_row($result) {
   return $row;
 }
 
-function theme_plm_event_results($event) {
-  $eid = $event->eid;
+function theme_plm_game_results($game) {
+  $gid = $game->gid;
 
-  $results = _get_plm_results($eid);
+  $results = _get_plm_results($gid);
   
   if (!$results && !user_access('administer poker league')){
     return '<p>No Results Posted</p>';
@@ -1156,28 +1156,28 @@ function theme_plm_event_results($event) {
     popups_add_popups();
   }
 
-  $num_places = $event->num_players;
+  $num_places = $game->num_players;
   //if ($num_places > 5) $num_places = 5;
-  if ($event->finished) $num_places = count($results);
+  if ($game->finished) $num_places = count($results);
   // Add up total prizepool
   $total = 0;
 
-  $expected_pot_total = $event->pot_start + $event->buyin * $event->num_players;
+  $expected_pot_total = $game->pot_start + $game->buyin * $game->num_players;
   // Format results in table
   for ($place=1;$place<=$num_places;$place++){
     $r = $results[$place];
     // display blank result for admin if not set
     if (!$r){
       if ($total >= $expected_pot_total) continue;
-      $r = _plm_result_new($event, $place);
+      $r = _plm_result_new($game, $place);
     }
     $row = _plm_result_row($r);
     if (user_access('administer poker league')){
-      if ($event->finished) 
+      if ($game->finished) 
         $row[] = '';
       else{
         $row[] = l(t('edit'), 
-                 "plm/results/$r->eid/$r->place/edit",
+                 "plm/results/$r->gid/$r->place/edit",
                  array('attributes' => array('class' => 'popups-form')));
       }
     }
@@ -1209,7 +1209,7 @@ function theme_plm_event_results($event) {
     $rows[] = array('class' => 'subtot', 'data' => $lastrow);
   }
     
-  if ($event->finished) {
+  if ($game->finished) {
     $caption = t('Final Results');
   }
   else {
@@ -1373,7 +1373,7 @@ function plm_theme($existing, $type, $theme, $path) {
       'arguments' => array('plm_season' => NULL),
     ),
     'plm_results_block' => array(
-      'arguments' => array('plm_season' => NULL, 'plm_event' => NULL),
+      'arguments' => array('plm_season' => NULL, 'plm_game' => NULL),
     ),
     'plm_nav_menu' => array(
       'arguments' => array('tree' => NULL),
@@ -1395,11 +1395,11 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   // convert seconds to pure date (in local tz)
   $now = floor((time() + $tz_offset)/86400) * 86400;
 
-  // get latest event that is finished
-  $event = _get_latest_plm_event($plm_season->sid, TRUE); 
-  if (isset($event)){
-    $results = _get_plm_results($event->eid);
-    $update_age = round(($now - $event->event_date) / 86400);
+  // get latest game that is finished
+  $game = _get_latest_plm_game($plm_season->sid, TRUE); 
+  if (isset($game)){
+    $results = _get_plm_results($game->gid);
+    $update_age = round(($now - $game->game_date) / 86400);
   }
   
   // $header = array(
@@ -1460,7 +1460,7 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   //$caption = $plm_season->title;
   if ($has_newpoints){
     $fmt = 'D, n/j/y';
-    $datestr = format_date($event->event_date, 'custom', $fmt);
+    $datestr = format_date($game->game_date, 'custom', $fmt);
     $output .= "<div class=\"newpoints\">Updated $datestr<br/>";
     $days = format_plural($update_age, '1 day', '@count days');
     $output .= "($days ago)</div>";
@@ -1471,33 +1471,33 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   return $output;
 }
 
-function theme_plm_results_block($plm_season=NULL, $event=NULL) {
-  if (!isset($event)) {
+function theme_plm_results_block($plm_season=NULL, $game=NULL) {
+  if (!isset($game)) {
     if (!isset($plm_season)) 
       //$plm_season = _get_plm_season(variable_get('plm_current_season', 0));
       $sid = variable_get('plm_current_season', 0);
     else 
       $sid = $plm_season;
     if (!$sid) return '';
-    $event = _get_latest_plm_event($sid, TRUE);
-    if (!isset($event)) return '';
+    $game = _get_latest_plm_game($sid, TRUE);
+    if (!isset($game)) return '';
   }
-  $results = _get_plm_results($event->eid);
+  $results = _get_plm_results($game->gid);
   //drupal_set_message('theme_plm_results_block() <br>'
   //  . 'season=<pre>' . print_r( $sid , TRUE) . '</pre>'
-  //  . 'event=<pre>' . print_r( $event , TRUE) . '</pre>'
+  //  . 'game=<pre>' . print_r( $game , TRUE) . '</pre>'
   //  . 'results=<pre>' . print_r( $results , TRUE) . '</pre>');
   if (!isset($results)) return '';
 
-  $output = "<div class=\"plm-event-info\">";
+  $output = "<div class=\"plm-game-info\">";
   
   $fmt = 'D, M j Y';
-  $datestr = format_date($event->event_date, 'custom', $fmt);
+  $datestr = format_date($game->game_date, 'custom', $fmt);
 
-  $output .= '<div><h3>' . l($event->title, "plm/events/$event->eid") . '</h3></div>';
+  $output .= '<div><h3>' . l($game->title, "plm/games/$game->gid") . '</h3></div>';
   $output .= "<div>$datestr</div>";
-  $output .= "<div>Host: " . l($event->host, 'plm/players/pid/' . $event->hid) . "</div>";
-  $output .= "<div>$event->num_players Players</div>";
+  $output .= "<div>Host: " . l($game->host, 'plm/players/pid/' . $game->hid) . "</div>";
+  $output .= "<div>$game->num_players Players</div>";
   $output .= "</div>";
   
   foreach ($results as $r) {
@@ -1519,22 +1519,22 @@ function theme_plm_nav_menu() {
 
 }
 
-function plm_entrants_list($plm_event) {
-  if (!isset($plm_event)) return;
+function plm_entrants_list($plm_game) {
+  if (!isset($plm_game)) return;
 
-  $season = _get_plm_season($plm_event->sid);
-  $title = "$season->title: $plm_event->title Entrants";
+  $season = _get_plm_season($plm_game->sid);
+  $title = "$season->title: $plm_game->title Entrants";
   drupal_set_title($title);
 
-  $entrants = _get_plm_event_entrants($plm_event->eid);
-  $output .= theme_plm_event_entrants($plm_event, $entrants);
+  $entrants = _get_plm_game_entrants($plm_game->gid);
+  $output .= theme_plm_game_entrants($plm_game, $entrants);
   return $output;
 }
 
-function theme_plm_event_entrants($plm_event, $entrants) {
+function theme_plm_game_entrants($plm_game, $entrants) {
   
   if (!$entrants && 
-    ($event->finished && !user_access('administer poker league'))) {
+    ($game->finished && !user_access('administer poker league'))) {
     return '';
   }
   
@@ -1542,7 +1542,7 @@ function theme_plm_event_entrants($plm_event, $entrants) {
     '#','Name'
   );
   
-  if (!$plm_event->finished && user_access('administer poker league')) {
+  if (!$plm_game->finished && user_access('administer poker league')) {
     $headers[] = '';
     popups_add_popups();
   }
@@ -1554,7 +1554,7 @@ function theme_plm_event_entrants($plm_event, $entrants) {
         ++$num,
         $ent->name,
       );
-      if (!$plm_event->finished && user_access('administer poker league')) {
+      if (!$plm_game->finished && user_access('administer poker league')) {
         $rowdata[] = 
           l('edit', "plm/entrants/$ent->entid/edit",
             array('query' => drupal_get_destination(),
@@ -1571,9 +1571,9 @@ function theme_plm_event_entrants($plm_event, $entrants) {
   
   if ($rows)
     $output .= theme('table', $headers, $rows, $attr);
-  if (!$plm_event->finished && user_access('administer poker league')) {
+  if (!$plm_game->finished && user_access('administer poker league')) {
     $output .= '<div>';
-    $output .= l('Add Entrant', "plm/events/$plm_event->eid/entrants/add",
+    $output .= l('Add Entrant', "plm/games/$plm_game->gid/entrants/add",
                array('query' => drupal_get_destination(),
                  'attributes' => array('class' => 'popups-form')));
     $output .= '</div>';

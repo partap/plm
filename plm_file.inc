@@ -101,7 +101,7 @@ function plm_import_form_submit($form, &$form_state)  {
           $rec->num_players = $rec->cash_total / $rec->buyin;
         }
         $rec->finished = 1;
-        _import_plm_event($rec, $overwrite);
+        _import_plm_game($rec, $overwrite);
         $rec = NULL;
         $curplace = 0;
       }
@@ -119,7 +119,7 @@ function plm_import_form_submit($form, &$form_state)  {
       if (!$split) $dstr = $fields[0];
       else $dstr = substr($fields[0], 0, $split);
       //drupal_set_message("<p>fields[0]:".$fields[0]." split: $split</p>");
-      $rec->event_date = strtotime($dstr);
+      $rec->game_date = strtotime($dstr);
       if ($split) {
         $rec->title = trim(substr($fields[0], $split+1));
         $rec->num_players = trim($fields[2]);
@@ -130,9 +130,9 @@ function plm_import_form_submit($form, &$form_state)  {
       }
       $rec->cash_total = 0;
       
-      if (isset($rec->event_date) && !isset($first_event_date)){
-        $first_event_date = $rec->event_date;
-        //drupal_set_message("<p>First_event_date: $first_event_date ($dstr) </p>");
+      if (isset($rec->game_date) && !isset($first_game_date)){
+        $first_game_date = $rec->game_date;
+        //drupal_set_message("<p>First_game_date: $first_game_date ($dstr) </p>");
       }
       if (!$rec->num_players) {
         $p1 = strpos($rec->title, '(');
@@ -153,7 +153,7 @@ function plm_import_form_submit($form, &$form_state)  {
       // season 1:
       // m/d/yyyy
       if (!strlen($rec->title)){
-        $weeks = (int) (($rec->event_date - $first_event_date) / (86400 * 7.0) + 0.5);
+        $weeks = (int) (($rec->game_date - $first_game_date) / (86400 * 7.0) + 0.5);
         $rec->title = sprintf("Week %d", $weeks+1);
       }
 
@@ -188,7 +188,7 @@ function plm_import_form_submit($form, &$form_state)  {
 }
 
 
-function _import_plm_event($rec, $overwrite) {
+function _import_plm_game($rec, $overwrite) {
   if ($rec->hostname){
     $host = _get_plm_player_by_name($rec->hostname);
     if (!$host) {
@@ -199,31 +199,31 @@ function _import_plm_event($rec, $overwrite) {
     $rec->hid = $host->pid;
   }
 
-  $events = _get_plm_events_by_date($rec->sid, $rec->event_date);
-  if ($events) {
-    // Match this event
-    $event_exists = 1;
-    $rec->eid = $events[0]->eid;
-    //$rec->['event'] = 1;
+  $games = _get_plm_games_by_date($rec->sid, $rec->game_date);
+  if ($games) {
+    // Match this game
+    $game_exists = 1;
+    $rec->gid = $games[0]->gid;
+    //$rec->['game'] = 1;
     if ($overwrite) {
-      _update_plm_event($rec);
+      _update_plm_game($rec);
     }
   }
   else {
-    $event_exists = 0;
-    $rec->eid = _insert_plm_event($rec);
+    $game_exists = 0;
+    $rec->gid = _insert_plm_game($rec);
   }
 
   
 
-  $content = "<b>Event Rec: (exists=$event_exists, eid=$rec->eid)</b><br>";
+  $content = "<b>Game Rec: (exists=$game_exists, gid=$rec->gid)</b><br>";
 
   $rows[]  = array( 
     array('data' => 'Date', 'header' => 1),
-    array('data' => date('D, m/d/Y', $rec->event_date), 'colspan' => 3),
+    array('data' => date('D, m/d/Y', $rec->game_date), 'colspan' => 3),
   );
   $rows[]  = array( 
-    array('data' => 'Event', 'header' => 1),
+    array('data' => 'Game', 'header' => 1),
     array('data' => $rec->title, 'colspan' => 3),
   );
   $rows[]  = array( 
@@ -246,13 +246,13 @@ function _import_plm_event($rec, $overwrite) {
       $player->pid = _insert_plm_player($player);
       // handle errors!
     }
-    $newres->eid    = $rec->eid;
+    $newres->gid    = $rec->gid;
     $newres->place  = $i;
     $newres->cash   = $rec->cash[$i];
     $newres->points = $rec->points[$i];
     $newres->pid    = $player->pid;
     
-    $oldres = _get_plm_result($rec->eid, $i);
+    $oldres = _get_plm_result($rec->gid, $i);
     if ($oldres) {
       if ($overwrite) _update_plm_result($newres);
     }

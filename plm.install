@@ -36,11 +36,11 @@ function plm_schema() {
     
   );
   
-  $schema['plm_event'] = array(
-    'description' => 'An event in a poker league season',
+  $schema['plm_game'] = array(
+    'description' => 'A game in a poker league season',
     'fields' => array(
-      'eid' => array(
-        'description' => 'Event id',
+      'gid' => array(
+        'description' => 'Game id',
         'type' => 'serial', 
         'unsigned' => TRUE,
         'not null' => TRUE, 
@@ -53,21 +53,21 @@ function plm_schema() {
         'default' => 0
       ),
       'title' => array(
-        'description' => 'This event\'s title.  Must be unique within the season.',
+        'description' => "This game's title.  Must be unique within the season.",
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
         'default' => '',
       ),
       'hid' => array(
-        'description' => 'Player id of the host of this event',
+        'description' => 'Player id of the host of this game',
         'type' => 'int', 
         'unsigned' => TRUE,
         'not null' => TRUE, 
         'default' => 0
       ),
       'num_players' => array(
-        'description' => 'Number of total players entered in the event',
+        'description' => 'Number of total players entered in the game',
         'type' => 'int',         
         'unsigned' => TRUE,
         'not null' => TRUE, 
@@ -87,8 +87,8 @@ function plm_schema() {
         'not null' => TRUE, 
         'default' => 0
       ),
-      'event_date' => array(
-        'description' => 'Date of the event',
+      'game_date' => array(
+        'description' => 'Date of the game',
         'type' => 'int', 'not null' => TRUE, 'default' => 0
       ), 
       'list_entrants' => array(
@@ -103,7 +103,7 @@ function plm_schema() {
       ),
     ),
     'primary key' => array(
-      'eid',
+      'gid',
     ),
   );
   $schema['plm_player'] = array(
@@ -122,14 +122,14 @@ function plm_schema() {
         'not null' => FALSE, 'default' => 0
       ),
       'name' => array(
-        'description' => 'This player\'s "poker name"',
+        'description' => "This player's poker nickname",
         'type' => 'varchar',
         'length' => 32,
         'not null' => TRUE,
         'default' => '',
       ),
-      'name' => array(
-        'description' => 'This player\'s profile picture',
+      'picture' => array(
+        'description' => "This player's profile picture",
         'type' => 'varchar',
         'length' => 255,
         'not null' => FALSE,
@@ -143,7 +143,7 @@ function plm_schema() {
     'primary key' => array('pid'),
   );
   $schema['plm_entrant'] = array(
-    'description' => 'Event Entrants',
+    'description' => 'Game Entrants',
     'fields' => array(
       'entid' => array(
         'description' => 'Roster entry id',
@@ -151,8 +151,8 @@ function plm_schema() {
         'unsigned'    => TRUE,
         'not null'    => TRUE,
       ),
-      'eid' => array(
-        'description' => 'Event Id',
+      'gid' => array(
+        'description' => 'Game Id',
         'type' => 'int', 
         'unsigned' => TRUE,
         'not null' => TRUE, 
@@ -166,14 +166,14 @@ function plm_schema() {
     ),
     'primary key' => array('entid'),
     'unique keys' => array(
-      'eid_pid' => array('eid', 'pid'),
+      'gid_pid' => array('gid', 'pid'),
     ),    
   );
   $schema['plm_result'] = array(
-    'description' => 'Event results',
+    'description' => 'Game results',
     'fields' => array(
-      'eid' => array(
-        'description' => 'Event Id',
+      'gid' => array(
+        'description' => 'Game Id',
         'type' => 'int', 
         'unsigned' => TRUE,
         'not null' => TRUE, 
@@ -207,9 +207,9 @@ function plm_schema() {
         'default'  => 0,
       ),
     ),
-    'primary key' => array('eid', 'place'),
+    'primary key' => array('gid', 'place'),
     'unique keys' => array(
-      'eid_pid' => array('eid', 'pid'),
+      'gid_pid' => array('gid', 'pid'),
     )
   );
   $schema['plm_payset'] = array(

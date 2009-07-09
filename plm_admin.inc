@@ -43,25 +43,25 @@ function plm_settings() {
     '#default_value' => variable_get('plm_default_buyin', 10),
     '#size' => 3,
     '#maxlength' => 5,
-    '#description' => t("The default buy-in for poker events in this league"),
+    '#description' => t("The default buy-in for poker games in this league"),
     '#required' => TRUE, );
 
   $form['plm_default_prefix'] = array( 
     '#type' => 'textfield',
-    '#title' => t('Default Event Title'),
-    '#default_value' => variable_get('plm_default_prefix', 'Event '),
+    '#title' => t('Default Game Title'),
+    '#default_value' => variable_get('plm_default_prefix', 'Game '),
     '#size' => 10,
     '#maxlength' => 10,
-    '#description' => t("The default title for new poker events"),
+    '#description' => t("The default title for new poker games"),
     '#required' => TRUE, );
 
   $form['plm_auto_number'] = array( 
     '#type' => 'checkbox',
-    '#title' => t('Auto-Number Events'),
+    '#title' => t('Auto-Number Games'),
     '#default_value' => variable_get('plm_auto_number', TRUE),
     '#size' => 10,
     '#maxlength' => 10,
-    '#description' => t("If enabled, the default event title will be automatically numbered (eg. \"Week 1\", \"Week 2\" ...)"),
+    '#description' => t("If enabled, the default game title will be automatically numbered (eg. \"Week 1\", \"Week 2\" ...)"),
     '#required' => TRUE, );
 
   $form['plm_default_season_length'] = array( 
@@ -124,7 +124,7 @@ function plm_season_form(&$form_state, $rec = NULL) {
     drupal_set_title('Create a New Season');
   }
   $title = $rec->title;
-  //if (!isset($title)) $title = variable_get('plm_default_prefix', 'Event ');
+  //if (!isset($title)) $title = variable_get('plm_default_prefix', 'Game ');
   $form['title'] = array(
       '#type' => 'textfield',
       '#title' => t('Title'),
@@ -169,10 +169,10 @@ function plm_season_form(&$form_state, $rec = NULL) {
     '#default_value' => $autogen,
     '#weight' => -5
   );
-  $prefix = variable_get('plm_default_prefix', 'Event');
-  $form['sched']['event_prefix'] = array(
+  $prefix = variable_get('plm_default_prefix', 'Game');
+  $form['sched']['game_prefix'] = array(
     '#type' => 'textfield',
-    '#title' => t('Default Event Title'),
+    '#title' => t('Default Game Title'),
     '#required' => TRUE,
     '#default_value' => $prefix,
     '#weight' => -5
@@ -253,36 +253,36 @@ function plm_season_form_submit($form, &$form_state) {
   $autogen = $form_state['values']['autogen'];
   if (!$autogen) return;
   
-  $prefix = check_plain($form_state['values']['event_prefix']);
+  $prefix = check_plain($form_state['values']['game_prefix']);
   $num_weeks = $form_state['values']['num_weeks'];
   
-  $event_num = (_get_num_plm_events($sid)+1);
+  $game_num = (_get_num_plm_games($sid)+1);
 
   // add an hour in case we pass DST boundary
   $base_date = $season->start_date + 3600; 
   for ($i=0;$i<$num_weeks;$i++){
     $rec = new stdClass();
     $rec->sid        = $sid;
-    $rec->title      = $prefix . ' ' . ($event_num+$i);
-    $rec->event_date = $base_date + (60*60*24*7 * $i);
+    $rec->title      = $prefix . ' ' . ($game_num+$i);
+    $rec->game_date = $base_date + (60*60*24*7 * $i);
     $rec->buyin      = variable_get('plm_default_buyin', 10);
-    _insert_plm_event($rec);
+    _insert_plm_game($rec);
   }
   drupal_set_message(
-    t("Created @num_weeks new events for <i>@title</i>.", 
+    t("Created @num_weeks new games for <i>@title</i>.", 
       array('@num_weeks' => $num_weeks, '@title' => $season->title)));
   
 }
 function plm_season_confirm_delete(&$form_state, $season) {
   $form['_season'] = array('#type' => 'value', '#value' => $season);
-  // Should probably not be allowed to delete season with event results
+  // Should probably not be allowed to delete season with game results
   // Delete them first, if really sure
   return confirm_form(
     $form,
     t('Are you sure you want to delete <i>%title</i>?', 
       array('%title' => $season->title)),
     'plm/seasons/'. $season->sid,
-    t('All event results for this season will be deleted. '
+    t('All game results for this season will be deleted. '
       . 'This action cannot be undone.'),
     t('Delete'), t('Cancel'));
 }
@@ -447,7 +447,7 @@ function plm_player_confirm_delete(&$form_state, $player) {
     t('Are you sure you want to delete the player %name?', 
       array('%name' => $player->name)),
     'plm/players/pid/'. $player->pid,
-    t('All event results for this player will be deleted. '
+    t('All game results for this player will be deleted. '
       . 'This action cannot be undone.'),
     t('Delete'), t('Cancel'));
 }
@@ -462,14 +462,14 @@ function plm_player_delete($pid) {
   return _delete_plm_player($pid);
 }
 
-function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
+function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   global $user;
   if (isset($oldrec)) {
-    drupal_set_title("Edit Event");
+    drupal_set_title("Edit Game");
     $season = plm_season_load($oldrec->sid);
   }
   else {
-    drupal_set_title("New Event");
+    drupal_set_title("New Game");
     $oldrec->buyin = _plm_rules_default_buyin($season->sid);
   }
   $season_title = $season->title;
@@ -484,14 +484,14 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#type'          => 'value',
     '#value' => $sid,
   );
-  $form['eid'] = array(
+  $form['gid'] = array(
     '#type'          => 'value',
-    '#value' => $oldrec->eid,
+    '#value' => $oldrec->gid,
   );
 
   if (!$oldrec->title) {
-    $prefix = variable_get('plm_default_prefix', 'Event');
-    $oldrec->title = $prefix . ' ' . (_get_num_plm_events($sid)+1);
+    $prefix = variable_get('plm_default_prefix', 'Game');
+    $oldrec->title = $prefix . ' ' . (_get_num_plm_games($sid)+1);
   }
   $form['title'] = array(
     '#type' => 'textfield',
@@ -508,29 +508,29 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
   //  '#value' => "<p><b>tzoffset:</b> $tz_offset</p>",
   //);
   $fmt = 'D, M j Y';
-  $event_date = $oldrec->event_date;
-  if (!$event_date){
-    //$event_date = gmmktime();
-    $latest_event = _get_latest_plm_event($sid);
-    $last_date = $latest_event->event_date;
-    if (!$last_date) $event_date = $season->start_date;
+  $game_date = $oldrec->game_date;
+  if (!$game_date){
+    //$game_date = gmmktime();
+    $latest_game = _get_latest_plm_game($sid);
+    $last_date = $latest_game->game_date;
+    if (!$last_date) $game_date = $season->start_date;
     else {
       //$last_date_str = date($fmt, $last_date);
-      //$event_date = strtotime("$last_date_str + 1 week");
-      $event_date = $last_date + (60*60*24*7); // Add one week by default
+      //$game_date = strtotime("$last_date_str + 1 week");
+      $game_date = $last_date + (60*60*24*7); // Add one week by default
     }
   }
-  $form['event_date'] = array(
+  $form['game_date'] = array(
     '#type'          => 'date_popup',
-    '#title'         => t('Event Date'),
+    '#title'         => t('Game Date'),
     '#required'      => TRUE,
     '#date_format' => $fmt,
-    '#default_value' => date('Y-m-d H:i:s', $event_date),
-    //'#default_value' => date_make_date($event_date, NULL, DATE_UNIX),
+    '#default_value' => date('Y-m-d H:i:s', $game_date),
+    //'#default_value' => date_make_date($game_date, NULL, DATE_UNIX),
   );
   
-  /* $date_str = date($fmt, $event_date); */
-  /* $content = "<p>default date: $event_date ($date_str)</p>"; */
+  /* $date_str = date($fmt, $game_date); */
+  /* $content = "<p>default date: $game_date ($date_str)</p>"; */
   /* $form['new_date'] = array( */
   /*   '#value' => $content, */
   /* ); */
@@ -540,14 +540,14 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
   }
   $form['host_name'] = array(
     '#type'          => 'textfield',
-    '#title'         => t('Event Host'),
+    '#title'         => t('Game Host'),
     '#default_value' => $host,
     '#size' => 16,
     '#maxlength' => 16,
 
   );
 
-  if ($oldrec->eid) 
+  if ($oldrec->gid) 
     $list_entrants = $oldrec->list_entrants;
   else 
     // Use season default
@@ -560,7 +560,7 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#default_value' => $list_entrants,
   );
 
-  if ($oldrec->eid){
+  if ($oldrec->gid){
     $form['num_players'] = array(
       '#type'          => 'textfield',
       '#title'         => 'Num Players',
@@ -571,7 +571,7 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
     );
     
     // $form['view_roster'] = array(
-    //   '#value' => l('View Roster', "plm/events/$oldrec->eid/roster")
+    //   '#value' => l('View Roster', "plm/games/$oldrec->gid/roster")
     // );
   }
   else {
@@ -603,7 +603,7 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
 
   if ($oldrec->num_players || $oldrec->list_entrants){
     $form['results'] = array(
-      '#value' => theme_plm_event_results($oldrec)
+      '#value' => theme_plm_game_results($oldrec)
     );
     $form['finished'] = array(
       '#type' => 'checkbox',
@@ -622,7 +622,7 @@ function plm_event_form(&$form_state, $oldrec=NULL, $season=NULL) {
 
   return $form;
 }
-function plm_event_form_validate($form, &$form_state) {
+function plm_game_form_validate($form, &$form_state) {
 
   $host = check_plain(trim($form_state['values']['host_name']));
   if (strlen($host) > 0){ 
@@ -635,29 +635,29 @@ function plm_event_form_validate($form, &$form_state) {
   $title = check_plain(trim($form_state['values']['title']));
   
   if (strlen($title) == 0) 
-    form_set_error('title', 'Event Title is required');
+    form_set_error('title', 'Game Title is required');
 
   $sid = $form_state['values']['sid'];
-  $rec = _get_plm_event_by_title($title, $sid);
+  $rec = _get_plm_game_by_title($title, $sid);
 
-  $eid  = $form_state['values']['eid'];
-  if ($rec && $rec->eid != $eid) 
+  $gid  = $form_state['values']['gid'];
+  if ($rec && $rec->gid != $gid) 
     form_set_error(
-      'title', t("There is already a event called <i>@title</i> in this season.", 
+      'title', t("There is already a game called <i>@title</i> in this season.", 
                  array('@title' => $title)));
   
   $list_entrants = $form_state['values']['list_entrants'];
   if ($list_entrants){
-    $num_entrants = _get_num_plm_event_entrants($eid);
+    $num_entrants = _get_num_plm_game_entrants($gid);
     if ($num_entrants > 0)
       $form_state['values']['num_players'] = $num_entrants;
   }
 }
-function plm_event_form_submit($form, &$form_state) {
+function plm_game_form_submit($form, &$form_state) {
   $rec->sid           = $form_state['values']['sid'];
-  $rec->eid           = $form_state['values']['eid'];
+  $rec->gid           = $form_state['values']['gid'];
   $rec->title         = check_plain(trim($form_state['values']['title']));
-  $rec->event_date    = strtotime($form_state['values']['event_date']);
+  $rec->game_date    = strtotime($form_state['values']['game_date']);
   $rec->num_players   = $form_state['values']['num_players'];
   $rec->pot_start     = $form_state['values']['pot_start'];
   $rec->buyin         = $form_state['values']['buyin'];
@@ -670,29 +670,29 @@ function plm_event_form_submit($form, &$form_state) {
     $rec->hid = $p->pid;
   }
 
-  if ($rec->eid) $res = _update_plm_event($rec);
-  else $res = _insert_plm_event($rec);
+  if ($rec->gid) $res = _update_plm_game($rec);
+  else $res = _insert_plm_game($rec);
   
   if ($res) {
     drupal_set_message(
-      t("Saved event <i>@title</i>.", array('@title' => $rec->title)));
+      t("Saved game <i>@title</i>.", array('@title' => $rec->title)));
     
-    // Go back to season view if it was a new event
-    // Otherwise go to event view (if we just edited it)
-    // ...nah, just go to event view always
-    if ($rec->eid) 
-      $form_state['redirect'] = "plm/events/$rec->eid";
+    // Go back to season view if it was a new game
+    // Otherwise go to game view (if we just edited it)
+    // ...nah, just go to game view always
+    if ($rec->gid) 
+      $form_state['redirect'] = "plm/games/$rec->gid";
     else 
-      $form_state['redirect'] = "plm/events/$res";
+      $form_state['redirect'] = "plm/games/$res";
   }
 }
 
 
 function plm_result_form(&$form_state, $result) {
-  $event = plm_event_load($result->eid);
-  $title = $event->title . ': ' . _plm_format_place($result->place) . ' Place';
+  $game = plm_game_load($result->gid);
+  $title = $game->title . ': ' . _plm_format_place($result->place) . ' Place';
   drupal_set_title($title);
-  $form['_eid'] = array('#type' => 'value', '#value' => $result->eid);
+  $form['_gid'] = array('#type' => 'value', '#value' => $result->gid);
   $form['_place'] = array('#type' => 'value', '#value' => $result->place);
   $form['pid'] = array('#type' => 'value', '#value' => $result->pid);
 
@@ -722,7 +722,7 @@ function plm_result_form(&$form_state, $result) {
     '#value' => 'Save',
   );
   $form['cancel'] = array(
-    '#value' => l("Cancel", "plm/events/$result->eid"),
+    '#value' => l("Cancel", "plm/games/$result->gid"),
   );
   $form['delete'] = array(
     '#type' => 'button',
@@ -732,7 +732,7 @@ function plm_result_form(&$form_state, $result) {
   return $form;  
 }
 function plm_result_form_validate($form, &$form_state) {
-  $eid        = $form_state['values']['_eid'];
+  $gid        = $form_state['values']['_gid'];
   $place      = $form_state['values']['_place'];
   $new_player = $form_state['values']['_new_player'];
 
@@ -768,7 +768,7 @@ function plm_result_form_validate($form, &$form_state) {
   
 }
 function plm_result_form_submit($form, &$form_state) {
-  $r->eid     = $form_state['values']['_eid'];
+  $r->gid     = $form_state['values']['_gid'];
   $r->place   = $form_state['values']['_place'];
   $r->pid     = $form_state['values']['pid'];
   $r->points  = trim($form_state['values']['points']);
@@ -781,33 +781,33 @@ function plm_result_form_submit($form, &$form_state) {
     $rec->name = $name;
     $r->pid = _insert_plm_player($rec);
   }
-  $oldrec = _get_plm_result($r->eid, $r->place);
+  $oldrec = _get_plm_result($r->gid, $r->place);
   if (!$oldrec) {
     if (_insert_plm_result($r)) {
       drupal_set_message(
-        t("New result: %name in %place place (%eid)", 
+        t("New result: %name in %place place (%gid)", 
           array('%name' => $name,
                 '%place' => _plm_format_place($r->place),
-                '%eid' => $r->eid )));
+                '%gid' => $r->gid )));
     }
   }
   else {
     if (_update_plm_result($r)) {
       drupal_set_message(
-        t("Saved updated result for %name in %place place (%eid)", 
+        t("Saved updated result for %name in %place place (%gid)", 
           array('%name' => $name,
                 '%place' => _plm_format_place($r->place),
-                '%eid' => $r->eid )));
+                '%gid' => $r->gid )));
     }      
   }
-  $form_state['redirect'] = 'plm/events/' . $r->eid;
+  $form_state['redirect'] = 'plm/games/' . $r->gid;
 
 }
 
 function plm_result_delete_submit($form, &$form_state) {
-  $eid = $form_state['values']['_eid'];
+  $gid = $form_state['values']['_gid'];
   $place = $form_state['values']['_place'];
-  $form_state['redirect'] = 'plm/results/' . $eid . '/' . $place. '/delete';
+  $form_state['redirect'] = 'plm/results/' . $gid . '/' . $place. '/delete';
 }
 
 function plm_result_confirm_delete(&$form_state, $result) {
@@ -816,42 +816,42 @@ function plm_result_confirm_delete(&$form_state, $result) {
   return confirm_form(
     $form,
     t('Are you sure you want to delete this result?'),
-    'plm/results/'. $result->eid . '/' . $result->place . '/edit',
+    'plm/results/'. $result->gid . '/' . $result->place . '/edit',
     t('This action cannot be undone.'),
     t('Delete'), t('Cancel'));
 }
 function plm_result_confirm_delete_submit($form, &$form_state) {
   $result = $form_state['values']['_result'];
-  if (plm_result_delete($result->eid, $result->place))
-    drupal_set_message(t("The result for event:%eid place: %place has been deleted.", 
-                         array('%eid'   => $result->eid,
+  if (plm_result_delete($result->gid, $result->place))
+    drupal_set_message(t("The result for game:%gid place: %place has been deleted.", 
+                         array('%gid'   => $result->gid,
                                '%place' => $result->place)));
-  $form_state['redirect'] = "plm/events/$result->eid";
+  $form_state['redirect'] = "plm/games/$result->gid";
 }
-function plm_result_delete($eid,$place) {
-  return _delete_plm_result($eid, $place);
+function plm_result_delete($gid,$place) {
+  return _delete_plm_result($gid, $place);
 }
 
 
 
-function plm_entrant_form(&$form_state, $oldrec=NULL, $event=NULL) {
+function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
   if (isset($oldrec)) {
     drupal_set_title("Edit Entrant");
-    $event = plm_event_load($oldrec->eid);
+    $game = plm_game_load($oldrec->gid);
     $form['_entrant'] = array('#type' => 'value', '#value' => $oldrec);
     $player = _get_plm_player($oldrec->pid);
   }
   else {
     drupal_set_title("New Entrant");
   }
-  $event_title = $event->title;
-  $eid = $event->eid;
+  $game_title = $game->title;
+  $gid = $game->gid;
 
-  $form['_eid'] = array('#type' => 'value', '#value' => $eid);
+  $form['_gid'] = array('#type' => 'value', '#value' => $gid);
 
-  $form['event'] = array(
-    '#title'         => t('Event'),
-    '#value' => '<h3>' . l($event_title, "plm/events/$eid") . '</h3>',
+  $form['game'] = array(
+    '#title'         => t('Game'),
+    '#value' => '<h3>' . l($game_title, "plm/games/$gid") . '</h3>',
     "#weight" => -20,
 
   );
@@ -876,7 +876,7 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $event=NULL) {
   //   '#type' => 'button',
   //   '#value' => 'Cancel',
   //   '#submit' => 'plm_entrant_cancel_submit',
-  //   //'#value' => l("Cancel", "plm/events/$oldrec->eid/entrants"),
+  //   //'#value' => l("Cancel", "plm/games/$oldrec->gid/entrants"),
   // );
   $form['delete'] = array(
     '#type' => 'button',
@@ -890,7 +890,7 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $event=NULL) {
 
 function plm_entrant_form_validate($form, &$form_state) {
   $oldrec        = $form_state['values']['_entrant'];
-  $eid           = $form_state['values']['_eid'];
+  $gid           = $form_state['values']['_gid'];
   $new_player = $form_state['values']['_new_player'];
   
 
@@ -913,10 +913,10 @@ function plm_entrant_form_validate($form, &$form_state) {
                   array('@name' => $name)));      
     }
   }
-  $entrant = _find_plm_entrant($eid, $pid);
+  $entrant = _find_plm_entrant($gid, $pid);
   if ($entrant){
    form_set_error(
-        'name', t("<i>@name</i> is already entered in this event.", 
+        'name', t("<i>@name</i> is already entered in this game.", 
                   array('@name' => $name)));      
   }
 
@@ -925,7 +925,7 @@ function plm_entrant_form_validate($form, &$form_state) {
 
 function plm_entrant_form_submit($form, &$form_state) {
   $oldrec        = $form_state['values']['_entrant'];
-  $r->eid     = $form_state['values']['_eid'];
+  $r->gid     = $form_state['values']['_gid'];
   $r->pid     = $form_state['values']['pid'];
   $name       = trim($form_state['values']['name']);
   
@@ -937,7 +937,7 @@ function plm_entrant_form_submit($form, &$form_state) {
   }
   if (!$oldrec) {
     if (_insert_plm_entrant($r)) {
-      _update_num_plm_event_entrants($r->eid);
+      _update_num_plm_game_entrants($r->gid);
       drupal_set_message(
         t("Added entrant: %name", 
           array('%name' => $name)));
@@ -950,13 +950,13 @@ function plm_entrant_form_submit($form, &$form_state) {
           array('%name' => $name)));
     }      
   }
-  $form_state['redirect'] = 'plm/events/' . $r->eid . '/entrants';
+  $form_state['redirect'] = 'plm/games/' . $r->gid . '/entrants';
 
 }
 
 function plm_entrant_cancel_submit($form, &$form_state) {
   $oldrec        = $form_state['values']['_entrant'];
-  $form_state['redirect'] = 'plm/events/' . $r->eid . '/entrants';
+  $form_state['redirect'] = 'plm/games/' . $r->gid . '/entrants';
 }
 
 function plm_entrant_delete_submit($form, &$form_state) {
@@ -977,10 +977,10 @@ function plm_entrant_confirm_delete(&$form_state, $entrant) {
 function plm_entrant_confirm_delete_submit($form, &$form_state) {
   $entrant = $form_state['values']['_entrant'];
   if (plm_entrant_delete($entrant->entid)){
-    _update_num_plm_event_entrants($r->eid);
+    _update_num_plm_game_entrants($r->gid);
     drupal_set_message(t("The entrant has been deleted."));
   }
-  $form_state['redirect'] = "plm/events/$entrant->eid/entrants";
+  $form_state['redirect'] = "plm/games/$entrant->gid/entrants";
 }
 function plm_entrant_delete($entid) {
   return _delete_plm_entrant($entid);

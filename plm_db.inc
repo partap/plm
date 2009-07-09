@@ -46,7 +46,7 @@ function _get_plm_rankings($sid, $limit = NULL) {
   $sql = "SELECT p.pid, p.name, e.sid,
       SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places 
     FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid 
-    JOIN {plm_event} e ON r.eid=e.eid
+    JOIN {plm_game} e ON r.gid=e.gid
     WHERE e.sid=%d
     GROUP BY e.sid,p.pid, p.name " . $sort_phrase ; 
   $result = db_query($sql, $sid);
@@ -92,11 +92,11 @@ function _update_plm_season($season) {
                   $season->title, $season->start_date, $season->end_date, $season->sid);
 }
 function _delete_plm_season($sid) {
-  // Delete events, results from the season too..
-  $res = db_query("DELETE FROM {plm_result} WHERE eid IN 
-                   (SELECT eid FROM {plm_event} WHERE sid=%d)", $sid);
+  // Delete games, results from the season too..
+  $res = db_query("DELETE FROM {plm_result} WHERE gid IN 
+                   (SELECT gid FROM {plm_game} WHERE sid=%d)", $sid);
   if (!$res) return $res;
-  $res = db_query("DELETE FROM {plm_event} where  sid=%d", $sid);
+  $res = db_query("DELETE FROM {plm_game} where  sid=%d", $sid);
   if (!$res) return $res;
   $res = db_query("DELETE FROM {plm_season} where sid=%d", $sid);
   return $res;
@@ -134,22 +134,22 @@ $sql = "SELECT *, NULLIF(s.end_date,0) AS end_dt
   return  db_fetch_object(db_query($sql, $sid));
 }
 
-function _get_num_plm_events($sid, $where_phrase=NULL) {
-  $sql = "SELECT count(*) as num_events 
-          FROM {plm_event}
+function _get_num_plm_games($sid, $where_phrase=NULL) {
+  $sql = "SELECT count(*) as num_games 
+          FROM {plm_game}
           WHERE sid=%d";
   if (isset($where_phrase)) $sql .= " AND $where_phrase";
   return  db_result(db_query($sql, $sid));
 }
 
-function _get_plm_events($sid, $sort_phrase=NULL) {
-  if (!isset($sort_phrase)) $sort_phrase='ORDER BY e.event_date';
+function _get_plm_games($sid, $sort_phrase=NULL) {
+  if (!isset($sort_phrase)) $sort_phrase='ORDER BY e.game_date';
   
-  $sql = "SELECT e.eid, e.title, p.name as host, e.event_date, e.hid, 
+  $sql = "SELECT e.gid, e.title, p.name as host, e.game_date, e.hid, 
             e.num_players, r.pid AS wid, p2.name AS winner, e.finished
-          FROM {plm_event} e 
+          FROM {plm_game} e 
           LEFT JOIN {plm_player} p ON p.pid=e.hid 
-          LEFT JOIN {plm_result} r ON e.eid=r.eid
+          LEFT JOIN {plm_result} r ON e.gid=r.gid
           LEFT JOIN {plm_player} p2 ON r.pid=p2.pid
           WHERE e.sid=%d AND (r IS NULL OR r.place=1)
           $sort_phrase";
@@ -163,14 +163,14 @@ function _get_plm_events($sid, $sort_phrase=NULL) {
   return $list;
 }
 
-// Get all events in this season on this day
-function _get_plm_events_by_date($sid, $game_date) {
-  $sort_phrase='ORDER BY e.event_date';
-  $sql = "SELECT e.eid, e.title, p.name as host, e.event_date, e.hid, 
+// Get all games in this season on this day
+function _get_plm_games_by_date($sid, $game_date) {
+  $sort_phrase='ORDER BY e.game_date';
+  $sql = "SELECT e.gid, e.title, p.name as host, e.game_date, e.hid, 
           e.num_players, e.finished
-          FROM {plm_event} e 
+          FROM {plm_game} e 
           LEFT JOIN {plm_player} p ON p.pid=e.hid 
-          WHERE e.sid=%d AND event_date BETWEEN %d AND %d
+          WHERE e.sid=%d AND game_date BETWEEN %d AND %d
           $sort_phrase";
   $result = db_query($sql, $sid,  $game_date, $game_date + 86400);
   while ($row = db_fetch_object($result)){
@@ -179,81 +179,81 @@ function _get_plm_events_by_date($sid, $game_date) {
   return $list;
 }
 
-function _get_plm_event($eid) {
-  $sql = "SELECT * from {plm_event} WHERE eid=%d";
-  return db_fetch_object(db_query($sql, $eid));
+function _get_plm_game($gid) {
+  $sql = "SELECT * from {plm_game} WHERE gid=%d";
+  return db_fetch_object(db_query($sql, $gid));
 }
-function _get_latest_plm_event($sid, $finished=FALSE) {
+function _get_latest_plm_game($sid, $finished=FALSE) {
   global $user;
-  $qry =  " AND event_date <= " . (time() + $user->timezone);
+  $qry =  " AND game_date <= " . (time() + $user->timezone);
   if ($finished) $qry = " AND e.finished != 0";
-  $qry .= " ORDER BY event_date DESC LIMIT 1";
-  $latest_events = _get_plm_events($sid, $qry);
-  return $latest_events[0];
+  $qry .= " ORDER BY game_date DESC LIMIT 1";
+  $latest_games = _get_plm_games($sid, $qry);
+  return $latest_games[0];
 }
 
-function _get_upcoming_plm_events($sid) {
+function _get_upcoming_plm_games($sid) {
   global $user;
-  $qry .=  " AND e.event_date >= " 
+  $qry .=  " AND e.game_date >= " 
     . (time() + $user->timezone);
-  $qry .= " ORDER BY event_date";
+  $qry .= " ORDER BY game_date";
   //drupal_set_message("sort_phrase: $qry");
-  $upcoming_events = _get_plm_events($sid, $qry);
-  return $upcoming_events;
+  $upcoming_games = _get_plm_games($sid, $qry);
+  return $upcoming_games;
 }
-function _get_plm_event_by_title($title, $sid) {
-  $sql = "SELECT * from {plm_event} WHERE title=lower('%s') and sid=%d";
+function _get_plm_game_by_title($title, $sid) {
+  $sql = "SELECT * from {plm_game} WHERE title=lower('%s') and sid=%d";
   return db_fetch_object(db_query($sql, $title, $sid));
 }
 
 // return id of new record or FALSE if error
-function _insert_plm_event($rec) {
-  $res = db_query("INSERT INTO {plm_event} 
-                   (title, sid, event_date, hid, num_players, pot_start, buyin, finished) 
+function _insert_plm_game($rec) {
+  $res = db_query("INSERT INTO {plm_game} 
+                   (title, sid, game_date, hid, num_players, pot_start, buyin, finished) 
                    VALUES ('%s', %d, %d, %d, %d, %d, %d, %d)", 
          $rec->title, $rec->sid,
-         $rec->event_date, $rec->hid, $rec->num_players, 
+         $rec->game_date, $rec->hid, $rec->num_players, 
          $rec->pot_start, $rec->buyin, $rec->finished);
   if (!$res) return $res;
-  return db_last_insert_id(db_prefix_tables('{plm_event}'), 'eid');
+  return db_last_insert_id(db_prefix_tables('{plm_game}'), 'gid');
 }
-function _update_plm_event($rec) {
-  return db_query("UPDATE {plm_event} 
-                   SET title='%s', event_date=%d, 
+function _update_plm_game($rec) {
+  return db_query("UPDATE {plm_game} 
+                   SET title='%s', game_date=%d, 
                    sid=%d, hid=%d, num_players=%d,
                    pot_start=%d, buyin=%d, finished=%d, list_entrants=%d
-                   WHERE eid = %d", 
-    $rec->title, $rec->event_date, 
+                   WHERE gid = %d", 
+    $rec->title, $rec->game_date, 
     $rec->sid, $rec->hid, $rec->num_players,
     $rec->pot_start, $rec->buyin, $rec->finished, $rec->list_entrants,
-    $rec->eid);
+    $rec->gid);
 }
 
-function _delete_plm_event($eid) {
-  $res = db_query("DELETE FROM {plm_entrant} WHERE eid=%d", $eid); 
+function _delete_plm_game($gid) {
+  $res = db_query("DELETE FROM {plm_entrant} WHERE gid=%d", $gid); 
   if (!$res) return $res;
-  $res = db_query("DELETE FROM {plm_result} WHERE eid=%d", $eid); 
+  $res = db_query("DELETE FROM {plm_result} WHERE gid=%d", $gid); 
   if (!$res) return $res;
-  return db_query("DELETE FROM {plm_event}  WHERE eid=%d", $rec->eid);
+  return db_query("DELETE FROM {plm_game}  WHERE gid=%d", $rec->gid);
 }
 
 
-function _get_plm_result($eid, $place){
-  $sql = "SELECT eid, place, pid, p.name, points, cash 
+function _get_plm_result($gid, $place){
+  $sql = "SELECT gid, place, pid, p.name, points, cash 
           FROM {plm_result} r
           LEFT JOIN {plm_player} p USING(pid)
-          WHERE r.eid=%d and r.place=%d";
-  $res = db_fetch_object(db_query($sql, $eid, $place));
+          WHERE r.gid=%d and r.place=%d";
+  $res = db_fetch_object(db_query($sql, $gid, $place));
   return $res;
 }
 
-function _get_plm_results($eid){
-  $sql = "SELECT eid, place, pid, p.name, points, cash 
+function _get_plm_results($gid){
+  $sql = "SELECT gid, place, pid, p.name, points, cash 
           FROM {plm_result} r
           LEFT JOIN {plm_player} p USING(pid)
-          WHERE r.eid=%d
+          WHERE r.gid=%d
           ORDER BY place";
-  $result = db_query($sql, $eid);
+  $result = db_query($sql, $gid);
   while ($row = db_fetch_object($result)) {
     $res[$row->place] = $row;
   }
@@ -261,13 +261,13 @@ function _get_plm_results($eid){
 }
 
 function _get_plm_results_by_player($pid, $sid=NULL) {
-  $sql = "SELECT s.sid, e.eid, e.title, e.hid, p.name AS host, r.place, r.points, r.cash
+  $sql = "SELECT s.sid, e.gid, e.title, e.hid, p.name AS host, r.place, r.points, r.cash
           FROM {plm_result} r 
-          LEFT JOIN ({plm_event} e LEFT JOIN  {plm_player} p ON e.hid=p.pid) USING (eid)
+          LEFT JOIN ({plm_game} e LEFT JOIN  {plm_player} p ON e.hid=p.pid) USING (gid)
           LEFT JOIN {plm_season} s USING (sid)
           WHERE r.pid=%d ";
   if ($sid) $sql .= "AND e.sid=%d ";
-  $sql .= "ORDER BY s.start_date, e.event_date";
+  $sql .= "ORDER BY s.start_date, e.game_date";
   $result = db_query($sql, $pid, $sid);
   while ($row = db_fetch_object($result)) {
     $res[] = $row;
@@ -278,24 +278,24 @@ function _get_plm_results_by_player($pid, $sid=NULL) {
 }
 
 function _insert_plm_result($rec) {
-  $sql = "INSERT INTO {plm_result} (eid, place, pid, points, cash)
+  $sql = "INSERT INTO {plm_result} (gid, place, pid, points, cash)
             VALUES (%d, %d, %d, %d, %d)";
-  return db_query($sql, $rec->eid, $rec->place, $rec->pid, $rec->points, $rec->cash);
+  return db_query($sql, $rec->gid, $rec->place, $rec->pid, $rec->points, $rec->cash);
 }
 
 function _update_plm_result($rec) {
     $sql = "UPDATE {plm_result} 
           SET pid=%d, points=%d, cash=%d
-          WHERE eid=%d AND place=%d";
+          WHERE gid=%d AND place=%d";
     $res = db_query($sql,
              $rec->pid, $rec->points, $rec->cash,
-             $rec->eid, $rec->place);
+             $rec->gid, $rec->place);
     return $res;
 }
 
-function _delete_plm_result($eid, $place) {
-    $sql = "DELETE FROM {plm_result} where eid=%d AND $place=%d";
-    return db_query($sql, $eid,$place);
+function _delete_plm_result($gid, $place) {
+    $sql = "DELETE FROM {plm_result} where gid=%d AND $place=%d";
+    return db_query($sql, $gid,$place);
 }
 
 function _get_plm_entrant($entid) {
@@ -304,55 +304,55 @@ function _get_plm_entrant($entid) {
   return db_fetch_object(db_query($sql, $entid));
 }
 
-function _find_plm_entrant($eid, $pid) {
+function _find_plm_entrant($gid, $pid) {
   $sql = "SELECT * FROM {plm_entrant} 
-          WHERE eid=%d AND pid=%d";
-  return db_fetch_object(db_query($sql, $eid, $pid));
+          WHERE gid=%d AND pid=%d";
+  return db_fetch_object(db_query($sql, $gid, $pid));
 }
 
-function _get_plm_event_entrants($eid) {
-  $sql = "SELECT e.entid, e.eid, e.pid, p.name  
+function _get_plm_game_entrants($gid) {
+  $sql = "SELECT e.entid, e.gid, e.pid, p.name  
           FROM {plm_entrant} e
           LEFT JOIN {plm_player} p USING (pid)
-          WHERE eid=%d
+          WHERE gid=%d
           ORDER BY entid";
-  $result = db_query($sql, $eid);
+  $result = db_query($sql, $gid);
   $list = array();
   while ($row = db_fetch_object($result)){
     $list[] = $row;
   }
   return $list;
 }
-function _get_num_plm_event_entrants($eid) {
+function _get_num_plm_game_entrants($gid) {
   $sql = "SELECT count(*) AS n
           FROM {plm_entrant} e
-          WHERE eid=%d";
-  $result = db_fetch_object(db_query($sql, $eid));
+          WHERE gid=%d";
+  $result = db_fetch_object(db_query($sql, $gid));
   if ($result)
     return $result->n;
   return $result;
 }
-function _update_num_plm_event_entrants($eid) {
+function _update_num_plm_game_entrants($gid) {
 
-  $sql = "UPDATE {plm_event} 
-          SET num_players = (SELECT COUNT(*) FROM {plm_entrant} WHERE eid=%d)
-          WHERE eid=%d AND list_entrants != 0";
-  $result = db_query($sql, $eid, $eid);
+  $sql = "UPDATE {plm_game} 
+          SET num_players = (SELECT COUNT(*) FROM {plm_entrant} WHERE gid=%d)
+          WHERE gid=%d AND list_entrants != 0";
+  $result = db_query($sql, $gid, $gid);
   return $result;
 }
 function _insert_plm_entrant($rec) {
-  $sql = "INSERT INTO {plm_entrant} (eid, pid) 
+  $sql = "INSERT INTO {plm_entrant} (gid, pid) 
           VALUES (%d, %d)";
-  $res = db_query($sql, $rec->eid, $rec->pid);
+  $res = db_query($sql, $rec->gid, $rec->pid);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_entrant}'), 'entid');  
 }
 
 function _update_plm_entrant($rec) {
   $sql = "UPDATE {plm_entrant} 
-          SET eid=%d, pid=%d
+          SET gid=%d, pid=%d
           WHERE entid=%d";
-  $res = db_query($sql, $rec->eid, $rec->pid, $rec->entid);
+  $res = db_query($sql, $rec->gid, $rec->pid, $rec->entid);
   return $res;
 }
 

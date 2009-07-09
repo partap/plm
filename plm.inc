@@ -24,9 +24,9 @@ function _plm_rules_default_buyin($sid) {
 }
 
 
-// Default point distribution for a event 
+// Default point distribution for a game 
 // Could be dependent on ruleset for season, etc, but hardcoded for now
-function _plm_rules_default_points($event, $place) {
+function _plm_rules_default_points($game, $place) {
   switch ($place){
   case 1:
     return 10;
@@ -44,10 +44,10 @@ function _plm_rules_default_points($event, $place) {
 }
 
 
-function _plm_rules_default_payout($event, $place) {
-  $num_players = $event->num_players;
-  $buyin = $event->buyin;
-  $pot_total  = $event->pot_start + $num_players*$buyin;
+function _plm_rules_default_payout($game, $place) {
+  $num_players = $game->num_players;
+  $buyin = $game->buyin;
+  $pot_total  = $game->pot_start + $num_players*$buyin;
   if ($pot_total <= 0) return 0;
   $pot_left = $pot_total;
   if ($buyin == 0) $buyin = $pot_total/$num_players;
@@ -65,29 +65,29 @@ function _plm_rules_default_payout($event, $place) {
 }
 
 function _plm_get_est_cutoff_points($plm_season, $tenth) {
-  $num_games_finished = _get_num_plm_events($plm_season->sid, "finished != 0");
-  $num_games_total    = _get_plm_season_num_events($plm_season);
+  $num_games_finished = _get_num_plm_games($plm_season->sid, "finished != 0");
+  $num_games_total    = _get_plm_season_num_games($plm_season);
   return round($tenth*$num_games_total/$num_games_finished);
 }
 
 function _plm_get_eoy_est($plm_season, $eoy_total) {
-  $num_games_finished = _get_num_plm_events($plm_season->sid, "finished != 0");
-  $num_games_total    = _get_plm_season_num_events($plm_season);
+  $num_games_finished = _get_num_plm_games($plm_season->sid, "finished != 0");
+  $num_games_total    = _get_plm_season_num_games($plm_season);
   return round($eoy_total*$num_games_total/$num_games_finished);
 }
 
 // Temporarily hardcoded
-function _plm_get_eoy_total($plm_season, $events) {
-  //$num_games_finished = _get_num_plm_events($plm_season->sid, "finished != 0");
+function _plm_get_eoy_total($plm_season, $games) {
+  //$num_games_finished = _get_num_plm_games($plm_season->sid, "finished != 0");
   $total = 0;
-  foreach ($events as $e) {
-    $total += $e->eoy_rake;
+  foreach ($games as $g) {
+    $total += $g->eoy_rake;
   }
   return $total;
 }
 
 // Temporarily hardcoded
-function _get_plm_season_num_events($plm_season) {
+function _get_plm_season_num_games($plm_season) {
   switch ($plm_season->title) {
     case 'Season 5': 
     case 'Season 6': 
