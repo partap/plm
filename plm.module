@@ -891,10 +891,10 @@ function theme_plm_upcoming_games($season){
   $today = time() + $user->timezone;
   $fmt = 'D, M j';
   $found_upcoming=FALSE;
-  foreach ($games as $e) {
-    //if (!($e->hid)) continue;
-    $datestr = format_date($e->game_date, 'custom', $fmt);
-    $days = ($e->game_date - $today) / 86400;
+  foreach ($games as $g) {
+    //if (!($g->hid)) continue;
+    $datestr = format_date($g->game_date, 'custom', $fmt);
+    $days = ($g->game_date - $today) / 86400;
     $daystr=NULL;
     if ($days == 0) $daystr = 'Tonight';
     else if ($days == 1) $daystr = 'Tomorrow';

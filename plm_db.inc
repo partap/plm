@@ -43,12 +43,12 @@ function _get_plm_players($sort_phrase, $where_phrase = '', $max=-1) {
 function _get_plm_rankings($sid, $limit = NULL) {
   $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name NULLS LAST";
   if ($limit) $sort_phrase .= " LIMIT $limit";
-  $sql = "SELECT p.pid, p.name, e.sid,
+  $sql = "SELECT p.pid, p.name, g.sid,
       SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places 
     FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid 
-    JOIN {plm_game} e ON r.gid=e.gid
-    WHERE e.sid=%d
-    GROUP BY e.sid,p.pid, p.name " . $sort_phrase ; 
+    JOIN {plm_game} g ON r.gid=g.gid
+    WHERE g.sid=%d
+    GROUP BY g.sid,p.pid, p.name " . $sort_phrase ; 
   $result = db_query($sql, $sid);
   $list = array();
   while ($row = db_fetch_object($result)){
@@ -143,15 +143,15 @@ function _get_num_plm_games($sid, $where_phrase=NULL) {
 }
 
 function _get_plm_games($sid, $sort_phrase=NULL) {
-  if (!isset($sort_phrase)) $sort_phrase='ORDER BY e.game_date';
+  if (!isset($sort_phrase)) $sort_phrase='ORDER BY g.game_date';
   
-  $sql = "SELECT e.gid, e.title, p.name as host, e.game_date, e.hid, 
-            e.num_players, r.pid AS wid, p2.name AS winner, e.finished
-          FROM {plm_game} e 
-          LEFT JOIN {plm_player} p ON p.pid=e.hid 
-          LEFT JOIN {plm_result} r ON e.gid=r.gid
+  $sql = "SELECT g.gid, g.title, p.name as host, g.game_date, g.hid, 
+            g.num_players, r.pid AS wid, p2.name AS winner, g.finished
+          FROM {plm_game} g 
+          LEFT JOIN {plm_player} p ON p.pid=g.hid 
+          LEFT JOIN {plm_result} r ON g.gid=r.gid
           LEFT JOIN {plm_player} p2 ON r.pid=p2.pid
-          WHERE e.sid=%d AND (r IS NULL OR r.place=1)
+          WHERE g.sid=%d AND (r IS NULL OR r.place=1)
           $sort_phrase";
   $result = db_query($sql, $sid);
   while ($row = db_fetch_object($result)){
@@ -165,12 +165,12 @@ function _get_plm_games($sid, $sort_phrase=NULL) {
 
 // Get all games in this season on this day
 function _get_plm_games_by_date($sid, $game_date) {
-  $sort_phrase='ORDER BY e.game_date';
-  $sql = "SELECT e.gid, e.title, p.name as host, e.game_date, e.hid, 
-          e.num_players, e.finished
-          FROM {plm_game} e 
-          LEFT JOIN {plm_player} p ON p.pid=e.hid 
-          WHERE e.sid=%d AND game_date BETWEEN %d AND %d
+  $sort_phrase='ORDER BY g.game_date';
+  $sql = "SELECT g.gid, g.title, p.name as host, g.game_date, g.hid, 
+          g.num_players, g.finished
+          FROM {plm_game} g 
+          LEFT JOIN {plm_player} p ON p.pid=g.hid 
+          WHERE g.sid=%d AND game_date BETWEEN %d AND %d
           $sort_phrase";
   $result = db_query($sql, $sid,  $game_date, $game_date + 86400);
   while ($row = db_fetch_object($result)){
@@ -186,7 +186,7 @@ function _get_plm_game($gid) {
 function _get_latest_plm_game($sid, $finished=FALSE) {
   global $user;
   $qry =  " AND game_date <= " . (time() + $user->timezone);
-  if ($finished) $qry = " AND e.finished != 0";
+  if ($finished) $qry = " AND g.finished != 0";
   $qry .= " ORDER BY game_date DESC LIMIT 1";
   $latest_games = _get_plm_games($sid, $qry);
   return $latest_games[0];
@@ -194,10 +194,10 @@ function _get_latest_plm_game($sid, $finished=FALSE) {
 
 function _get_upcoming_plm_games($sid) {
   global $user;
-  $qry .=  " AND e.game_date >= " 
+  $qry .=  " AND g.game_date >= " 
     . (time() + $user->timezone);
   $qry .= " ORDER BY game_date";
-  //drupal_set_message("sort_phrase: $qry");
+  drupal_set_message("sort_phrase: $qry");
   $upcoming_games = _get_plm_games($sid, $qry);
   return $upcoming_games;
 }
@@ -261,13 +261,13 @@ function _get_plm_results($gid){
 }
 
 function _get_plm_results_by_player($pid, $sid=NULL) {
-  $sql = "SELECT s.sid, e.gid, e.title, e.hid, p.name AS host, r.place, r.points, r.cash
+  $sql = "SELECT s.sid, g.gid, g.title, g.hid, p.name AS host, r.place, r.points, r.cash
           FROM {plm_result} r 
-          LEFT JOIN ({plm_game} e LEFT JOIN  {plm_player} p ON e.hid=p.pid) USING (gid)
+          LEFT JOIN ({plm_game} g LEFT JOIN  {plm_player} p ON g.hid=p.pid) USING (gid)
           LEFT JOIN {plm_season} s USING (sid)
           WHERE r.pid=%d ";
-  if ($sid) $sql .= "AND e.sid=%d ";
-  $sql .= "ORDER BY s.start_date, e.game_date";
+  if ($sid) $sql .= "AND g.sid=%d ";
+  $sql .= "ORDER BY s.start_date, g.game_date";
   $result = db_query($sql, $pid, $sid);
   while ($row = db_fetch_object($result)) {
     $res[] = $row;
@@ -314,8 +314,8 @@ function _get_plm_game_entrants($gid) {
   $sql = "SELECT e.entid, e.gid, e.pid, p.name  
           FROM {plm_entrant} e
           LEFT JOIN {plm_player} p USING (pid)
-          WHERE gid=%d
-          ORDER BY entid";
+          WHERE e.gid=%d
+          ORDER BY e.entid";
   $result = db_query($sql, $gid);
   $list = array();
   while ($row = db_fetch_object($result)){
