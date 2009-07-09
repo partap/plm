@@ -779,13 +779,17 @@ function theme_plm_player_details($player) {
           array('data' => $cur_season->title, 'header' => 1, 'colspan' => 2),
         )
       );
+      $val = $s_points[$cur_season->sid];
+      if (!isset($val)) $val = 0;
       $summary_rows[] = array(
         array('data' => 'Points', 'header' => 1),
-        array('data' => $s_points[$cur_season->sid], 'align' => 'right'),
+        array('data' => $val, 'align' => 'right'),
       );
+      $val = $s_cash[$cur_season->sid];
+      if (!isset($val)) $val = 0;
       $summary_rows[] = array(
         array('data' => 'Winnings', 'header' => 1 ),
-        array('data' => '$' . $s_cash[$cur_season->sid], 'align' => 'right'),
+        array('data' => '$' . $val, 'align' => 'right'),
       );
      
       //drupal_set_message('<pre>' . print_r($summary_rows, TRUE) . '</pre>');
