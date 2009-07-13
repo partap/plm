@@ -41,10 +41,18 @@ function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
 }
 
 function _plm_get_rankings($sid, $limit = NULL) {
-  $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, name NULLS LAST";
+  $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, 
+  latest_place DESC, name NULLS LAST";
   if ($limit) $sort_phrase .= " LIMIT $limit";
   $sql = "SELECT p.pid, p.name, g.sid,
-      SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places 
+    SUM(points) AS points, SUM(cash) AS cash, 
+    COUNT(points) AS places, 
+    EXTRACT('epoch' FROM 
+      DATE_TRUNC('day', NOW()) - DATE_TRUNC( 'day', 
+      (TIMESTAMP 'epoch' + MAX(g.game_date) * INTERVAL '1 second'))
+    )/86400 
+    AS latest_place,
+    date_trunc('day', NOW() - DATE_TRUNC( 'day', (TIMESTAMP WITH TIME ZONE 'epoch' + MAX(g.game_date) * INTERVAL '1 second'))) AS latest_interval
     FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid 
     JOIN {plm_game} g ON r.gid=g.gid
     WHERE g.sid=%d
@@ -77,6 +85,16 @@ function _plm_delete_player($pid) {
   return db_query($sql, $pid);
 }
 
+function _plm_get_players_autocomplete($string) {
+  $sql = "SELECT name FROM {plm_player} 
+          WHERE LOWER(name) LIKE LOWER('%s%%')";
+  $result = db_query_range($sql, $string, 0, 10);
+  $matches = array();
+  while ($player = db_fetch_object($result)) {
+    $matches[$player->name] = check_plain($player->name);
+  }
+  return $matches;
+}
 function _plm_insert_season($season) {
   $res =  db_query("INSERT INTO {plm_season} (title, start_date, end_date) 
                     VALUES ('%s', %d, %d)", 
@@ -197,7 +215,7 @@ function _plm_get_upcoming_games($sid) {
   $qry .=  " AND g.game_date >= " 
     . (time() + $user->timezone);
   $qry .= " ORDER BY game_date";
-  drupal_set_message("sort_phrase: $qry");
+  //drupal_set_message("sort_phrase: $qry");
   $upcoming_games = _plm_get_games($sid, $qry);
   return $upcoming_games;
 }

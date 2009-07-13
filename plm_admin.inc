@@ -1,5 +1,4 @@
 <?php
-
 function plm_admin() {
   $items = plm_menu();
   $content = '<dl class="admin-list">';
@@ -7,9 +6,9 @@ function plm_admin() {
     $t = explode('/', $path);
     if ( count($t) == 3 ) {
       if (($t[0] == 'admin' ) 
-          && $t[1] == 'plm'  
-          && $menu['type'] == MENU_NORMAL_ITEM) {
-        $content .= '<dt>'. l($menu['title'], $path) .'</dt>';
+        && ($t[1] == 'plm')
+        && ($menu['type'] == MENU_NORMAL_ITEM)) {
+        $content .= '<dt>'. l($menu['title'], $path) . '</dt>';
         if ( isset($menu['description']) ) {
           $content .= '<dd>'. $menu['description'] .'</dd>';
         }
@@ -314,6 +313,7 @@ function plm_player_form(&$form_state, $player=NULL) {
     '#title' => 'Player Name',
     '#size'               => 20,
     '#maxlength'          => 60,
+    '#autocomplete_path'  => 'plm/autocomplete/player',                  
     '#default_value' => $player->name,
     '#required' => TRUE,
   );
@@ -460,7 +460,7 @@ function plm_player_form_submit($form, &$form_state) {
 
   if (user_access('administer poker league')){
     $player->uid = $form_state['values']['uid'];
-    drupal_set_message("Linking with uid $player->uid");
+    //drupal_set_message("Linking with uid $player->uid");
   }
 
   if ($pid) _plm_update_player($player);
@@ -559,7 +559,6 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#required'      => TRUE,
     '#date_format' => $fmt,
     '#default_value' => date('Y-m-d H:i:s', $game_date),
-    //'#default_value' => date_make_date($game_date, NULL, DATE_UNIX),
   );
   
   /* $date_str = date($fmt, $game_date); */
@@ -574,6 +573,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   $form['host_name'] = array(
     '#type'          => 'textfield',
     '#title'         => t('Game Host'),
+    '#autocomplete_path'  => 'plm/autocomplete/player',                  
     '#default_value' => $host,
     '#size' => 16,
     '#maxlength' => 16,
@@ -588,7 +588,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
 
   $form['list_entrants'] = array(
     '#type'          => 'checkbox',
-    '#title'         => 'List All Entrants',
+    '#title'         => 'Record All Entrants',
     '#required'      => TRUE,
     '#default_value' => $list_entrants,
   );
@@ -713,10 +713,10 @@ function plm_game_form_submit($form, &$form_state) {
     // Go back to season view if it was a new game
     // Otherwise go to game view (if we just edited it)
     // ...nah, just go to game view always
-    if ($rec->gid) 
-      $form_state['redirect'] = "plm/games/$rec->gid";
-    else 
-      $form_state['redirect'] = "plm/games/$res";
+    //if ($rec->gid) 
+    //  $form_state['redirect'] = "plm/games/$rec->gid";
+    //else 
+    //  $form_state['redirect'] = "plm/games/$res";
   }
 }
 
@@ -732,6 +732,7 @@ function plm_result_form(&$form_state, $result) {
   $form['name'] = array(
     '#type' => 'textfield',
     '#title' => 'Player Name',
+    '#autocomplete_path'  => 'plm/autocomplete/player',                  
     '#default_value' => $result->name,
   );
   $form['_new_player'] = array(
@@ -817,11 +818,11 @@ function plm_result_form_submit($form, &$form_state) {
   $oldrec = _plm_get_result($r->gid, $r->place);
   if (!$oldrec) {
     if (_plm_insert_result($r)) {
-      drupal_set_message(
-        t("New result: %name in %place place (%gid)", 
-          array('%name' => $name,
-                '%place' => _plm_format_place($r->place),
-                '%gid' => $r->gid )));
+//       drupal_set_message(
+//         t("New result: %name in %place place (%gid)", 
+//           array('%name' => $name,
+//                 '%place' => _plm_format_place($r->place),
+//                 '%gid' => $r->gid )));
     }
   }
   else {
@@ -833,7 +834,7 @@ function plm_result_form_submit($form, &$form_state) {
                 '%gid' => $r->gid )));
     }      
   }
-  $form_state['redirect'] = 'plm/games/' . $r->gid;
+  //$form_state['redirect'] = 'plm/games/' . $r->gid;
 
 }
 
@@ -892,6 +893,7 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
   $form['name'] = array(
    '#type' => 'textfield',
     '#title' => 'Player Name',
+    '#autocomplete_path'  => 'plm/autocomplete/player',                  
     '#default_value' => $player->name,
   );
   $form['_new_player'] = array(
@@ -905,12 +907,6 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
     '#type' => 'submit',
     '#value' => 'Save',
   );
-  // $form['cancel'] = array(
-  //   '#type' => 'button',
-  //   '#value' => 'Cancel',
-  //   '#submit' => 'plm_entrant_cancel_submit',
-  //   //'#value' => l("Cancel", "plm/games/$oldrec->gid/entrants"),
-  // );
   $form['delete'] = array(
     '#type' => 'button',
     '#value' => 'Delete',
@@ -971,16 +967,12 @@ function plm_entrant_form_submit($form, &$form_state) {
   if (!$oldrec) {
     if (_plm_insert_entrant($r)) {
       _plm_update_num_game_entrants($r->gid);
-      drupal_set_message(
-        t("Added entrant: %name", 
-          array('%name' => $name)));
+      //drupal_set_message("Registered $name");
     }
   }
   else {
     if (_plm_update_entrant($r)) {
-      drupal_set_message(
-        t("SUpdated entrant: %name",
-          array('%name' => $name)));
+      drupal_set_message("Updated entrant: $name");
     }      
   }
   $form_state['redirect'] = 'plm/games/' . $r->gid . '/entrants';
@@ -998,11 +990,13 @@ function plm_entrant_delete_submit($form, &$form_state) {
 }
 
 function plm_entrant_confirm_delete(&$form_state, $entrant) {
+  $player = _plm_get_player($entrant->pid);
+  $entrant->name = $player->name;
   $form['_entrant'] = array('#type' => 'value', '#value' => $entrant);
 
   return confirm_form(
     $form,
-    t('Are you sure you want to delete this entrant?'),
+    "Are you sure you want to unregister <i>$entrant->name</i>?",
     'plm/entrants/'. $entrant->entid . '/edit',
     t('This action cannot be undone.'),
     t('Delete'), t('Cancel'));
@@ -1011,7 +1005,7 @@ function plm_entrant_confirm_delete_submit($form, &$form_state) {
   $entrant = $form_state['values']['_entrant'];
   if (plm_entrant_delete($entrant->entid)){
     _plm_update_num_game_entrants($r->gid);
-    drupal_set_message(t("The entrant has been deleted."));
+    drupal_set_message("</i>$entrant->name</i> has been unregistered.");
   }
   $form_state['redirect'] = "plm/games/$entrant->gid/entrants";
 }

@@ -50,14 +50,20 @@ function _plm_rules_default_payout($game, $place) {
   $pot_total  = $game->pot_start + $num_players*$buyin;
   if ($pot_total <= 0) return 0;
   $pot_left = $pot_total;
-  if ($buyin == 0) $buyin = $pot_total/$num_players;
-  $round_units = $buyin/2;
+  if ($buyin == 0) $buyin = (int)($pot_total/$num_players);
+  
+  if ($buyin == (int)$buyin){
+    $round_units = 1.00;
+    //$round_units = (int)($buyin/2);
+  }
+  $min_payout = (int)($buyin/2);
   for ($i=1;$i<=$place;$i++){
     $remainder = $pot_left % ($round_units*2);
     // don't give last 2 places the same payout
       if ($pot_left == $round_units*2) $remainder = $round_units*2;
     $pot_left -= $remainder;
-    $pot_left /= 2;
+    if ($pot_left > $min_payout)
+      $pot_left /= 2;
     $payout = $pot_left + $remainder;
   }
   return $payout;

@@ -69,6 +69,12 @@ function plm_menu() {
   //   'type' => MENU_NORMAL_ITEM,
   //   'weight' => -100,
   // );
+  $items['plm/autocomplete/player'] = array(
+    'title' => 'player autocomplete',
+    'page callback' => 'plm_player_autocomplete',
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_CALLBACK,
+  );
   $items['plm/seasons'] = array(
     'title' => t('Seasons'),
     'description' => 'Browse All Seasons',
@@ -459,6 +465,10 @@ function plm_rankings($plm_season=NULL) {
       'data' => t('Name'),
     ),
     array(
+      'data' => t('Last'),
+      'class' => 'numcol',
+    ),
+    array(
       'data' => t('Points'),
       'class' => 'numcol',
     ),
@@ -497,6 +507,12 @@ function plm_rankings($plm_season=NULL) {
         'data' => l(t($rec->name), 'plm/players/pid/' . $rec->pid),
       ),
       array(
+        'data' => format_plural(
+          $rec->latest_place, '1 Day', '@count Days'),
+        //'data' => $rec->latest_interval,
+        'class' => 'numcol',
+      ),
+      array(
         'data' => $rec->points,
         'class' => 'numcol',
       ),
@@ -518,7 +534,7 @@ function plm_rankings($plm_season=NULL) {
       'class' => $class);
   }
 
-  $games     = _plm_get_games($plm_season->sid);
+  $games      = _plm_get_games($plm_season->sid);
   $eoy_total  = _plm_get_eoy_total($plm_season, $games);
   $eoy_est    = _plm_get_eoy_est($plm_season, $eoy_total);
   $tenth_est  = _plm_get_est_cutoff_points($plm_season, $tenth);
@@ -611,6 +627,7 @@ function plm_players_list($max_players_per_page=50) {
   }
   if (user_access('administer poker league')) {
     $header[] = array('data' => t(''), 'colspan' => 2);
+    popups_add_popups();
   }
   $q = tablesort_sql($header);
   $players = _plm_get_players($q, '', $max_players_per_page);
@@ -635,7 +652,9 @@ function plm_players_list($max_players_per_page=50) {
     }
     if (user_access('administer poker league')) {
       $rowdata[] = array(
-        'data'  => l(t('edit'), 'plm/players/pid/' . $rec->pid . '/edit'),
+        'data'  => l(t('edit'), 
+                 'plm/players/pid/' . $rec->pid . '/edit',
+                 array('attributes' => array('class' => 'popups-form'))),
         'class' => 'narrowcol');
       $rowdata[] = array(
         'data' => l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete'),
@@ -923,10 +942,10 @@ function theme_plm_upcoming_games($season){
     $output .= "<hr/>\n";
     if ($daystr)
       $output .= "<h3>$daystr:</h3> ";
-    $output .= "<p><b>$e->title</b> will be"
-      . ($e->hid ? " hosted by $e->host" : ' held')
+    $output .= "<p><b>$g->title</b> will be"
+      . ($g->hid ? " hosted by $g->host" : ' held')
       . " on $datestr.</p>";
-    if ($e->hid == 1) {
+    if ($g->hid == 1) {
       $output .= '<iframe width="400" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="http://maps.google.com/maps?f=q&amp;source=s_q&amp;hl=en&amp;geocode=&amp;q=3308+La+Veta+Dr+NE,+Albuquerque,+NM+87110&amp;sll=35.119593,-106.584249&amp;sspn=0.014357,0.027337&amp;ie=UTF8&amp;ll=35.12391,-106.581931&amp;spn=0.012285,0.018239&amp;z=15&amp;output=embed"></iframe><br /><small><a href="http://maps.google.com/maps?f=q&amp;source=embed&amp;hl=en&amp;geocode=&amp;q=3308+La+Veta+Dr+NE,+Albuquerque,+NM+87110&amp;sll=35.119593,-106.584249&amp;sspn=0.014357,0.027337&amp;ie=UTF8&amp;ll=35.12391,-106.581931&amp;spn=0.012285,0.018239&amp;z=15" style="color:#0000FF;text-align:left">View Larger Map</a></small>';
     }
   }
@@ -1200,16 +1219,18 @@ function theme_plm_game_results($game) {
 
   // make sure the payouts add up,
   // but if we don't have access to cash stats, skip it
-  if ($rem && user_access('access poker league member content')) {
+  if (user_access('access poker league member content')) {
     $pre = '$';
     if ($rem > 0) $style = 'color: #006600';
-    else {
+    else if ($rem < 0){
       $style = 'color: #660000';
       // $-5 looks too weird...try ($5) instead
       $pre = '($';
       $rem = -$rem;
       $post = ')';
     }
+    else $style = 'color: #444';
+
     $lastrow = array(
       array('data' => 'Pot Remaining', 'header' => 1, 'colspan' => 3),
       array('data' => $pre . $rem . $post, 'style' => $style),
@@ -1219,13 +1240,15 @@ function theme_plm_game_results($game) {
     }
     $rows[] = array('class' => 'subtot', 'data' => $lastrow);
   }
-    
-  if ($game->finished) {
-    $caption = t('Final Results');
-  }
-  else {
-    $caption = t('Tentative Results');
-  }
+
+  $output .= "<div><b>Total Pot:</b> \$$expected_pot_total</div>";
+//   if ($game->finished) {
+//     $caption = t('Final Results');
+//   }
+//   else {
+//     $caption = t('Tentative Results');
+//   }
+  $output .= '<h3>Results</h3>';
   $output .= theme('table', $header, $rows, NULL, $caption);
   return $output;
 }
@@ -1482,7 +1505,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
     foreach ($entrants as $ent) {
       $rowdata = array(
         ++$num,
-        $ent->name,
+        l($ent->name, "plm/players/pid/$ent->pid"),
       );
       if (!$plm_game->finished && user_access('administer poker league')) {
         $rowdata[] = 
@@ -1499,15 +1522,28 @@ function theme_plm_game_entrants($plm_game, $entrants) {
     }
   }
   
-  if ($rows)
-    $output .= theme('table', $headers, $rows, $attr);
   if (!$plm_game->finished && user_access('administer poker league')) {
-    $output .= '<div>';
-    $output .= l('Add Entrant', "plm/games/$plm_game->gid/entrants/add",
+    $addlink = '<div>';
+    $addlink .= l('Add Entrant', "plm/games/$plm_game->gid/entrants/add",
                array('query' => drupal_get_destination(),
                  'attributes' => array('class' => 'popups-form')));
-    $output .= '</div>';
+    $addlink .= '</div>';
+    $output .= $addlink;
+  }
+  if ($rows){
+    $output .= theme('table', $headers, $rows, $attr);
+    if (!$plm_game->finished && user_access('administer poker league')) {
+      $output .= $addlink;
+    }
   }
   return $output;
   
+}
+
+function plm_player_autocomplete($string = '') {
+  $matches = array();
+  if ($string) {
+    $matches = _plm_get_players_autocomplete($string);
+  }
+  drupal_json($matches);
 }
