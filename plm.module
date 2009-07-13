@@ -446,9 +446,9 @@ function plm_main() {
 }
 
 function plm_rankings($plm_season=NULL) {
+  $current_sid=variable_get('plm_current_season', 0);
   if (!isset($plm_season)){
-    $sid=variable_get('plm_current_season', 0);
-    $plm_season = _plm_get_season($sid);
+    $plm_season = _plm_get_season($current_sid);
   }
   if (!isset($plm_season)){
     $output = '<p>No Season Selected<p>';
@@ -456,6 +456,8 @@ function plm_rankings($plm_season=NULL) {
   }  
   drupal_set_title("$plm_season->title Rankings");
   
+  $sid = $plm_season->sid;
+
   $header = array(
     array(
       'data' => t('Rank'),
@@ -463,10 +465,6 @@ function plm_rankings($plm_season=NULL) {
     ),
     array(
       'data' => t('Name'),
-    ),
-    array(
-      'data' => t('Last'),
-      'class' => 'numcol',
     ),
     array(
       'data' => t('Points'),
@@ -480,7 +478,13 @@ function plm_rankings($plm_season=NULL) {
   if (user_access('access poker league member content')) {
     $header[] = array('data' => t('Winnings'));
   }
-  $sid = $plm_season->sid;
+    // time since last points earned
+  if ($sid == $current_sid){
+    $header[] = array(
+      'data' => t('Latest'),
+      'class' => 'numcol',
+    );
+  }
   $players = _plm_get_rankings($sid);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
@@ -507,12 +511,6 @@ function plm_rankings($plm_season=NULL) {
         'data' => l(t($rec->name), 'plm/players/pid/' . $rec->pid),
       ),
       array(
-        'data' => format_plural(
-          $rec->latest_place, '1 Day', '@count Days'),
-        //'data' => $rec->latest_interval,
-        'class' => 'numcol',
-      ),
-      array(
         'data' => $rec->points,
         'class' => 'numcol',
       ),
@@ -528,6 +526,22 @@ function plm_rankings($plm_season=NULL) {
         'class' => 'numcol',
       );
     }
+    // time since last points earned
+    if ($sid == $current_sid){
+      //if ($rec->latest_place == 0)
+      //  $data = format_plural($rec->latest_place, '1 day', '@count days');
+      //else
+      //if ($rec->latest_place < 7)
+      //  $data = format_plural($rec->latest_place, '1 day', '@count days');
+      //else
+        $data = format_plural(round($rec->latest_place/7), '1 wk', '@count wks');
+      $rowdata[] = array(
+        'data' => $data,
+        //'class' => 'narrowcol',
+        'class' => 'numcol',
+      );
+    }
+    
     $rank++;
     $rows[] = array( 
       'data'  => $rowdata, 
