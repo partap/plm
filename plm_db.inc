@@ -164,7 +164,7 @@ function _plm_get_games($sid, $sort_phrase=NULL) {
   if (!isset($sort_phrase)) $sort_phrase='ORDER BY g.game_date';
   
   $sql = "SELECT g.gid, g.title, p.name as host, g.game_date, g.hid, 
-            g.num_players, r.pid AS wid, p2.name AS winner, g.finished
+            g.num_players, r.pid AS wid, p2.name AS winner, g.announced, g.finished
           FROM {plm_game} g 
           LEFT JOIN {plm_player} p ON p.pid=g.hid 
           LEFT JOIN {plm_result} r ON g.gid=r.gid
@@ -185,7 +185,7 @@ function _plm_get_games($sid, $sort_phrase=NULL) {
 function _plm_get_games_by_date($sid, $game_date) {
   $sort_phrase='ORDER BY g.game_date';
   $sql = "SELECT g.gid, g.title, p.name as host, g.game_date, g.hid, 
-          g.num_players, g.finished
+          g.num_players, g.announced, g.finished
           FROM {plm_game} g 
           LEFT JOIN {plm_player} p ON p.pid=g.hid 
           WHERE g.sid=%d AND game_date BETWEEN %d AND %d
@@ -212,7 +212,7 @@ function _plm_get_latest_game($sid, $finished=FALSE) {
 
 function _plm_get_upcoming_games($sid) {
   global $user;
-  $qry .=  " AND g.game_date >= " 
+  $qry .=  " AND announced != 0 AND g.game_date >= " 
     . (time() + $user->timezone);
   $qry .= " ORDER BY game_date";
   //drupal_set_message("sort_phrase: $qry");
@@ -227,11 +227,12 @@ function _plm_get_game_by_title($title, $sid) {
 // return id of new record or FALSE if error
 function _plm_insert_game($rec) {
   $res = db_query("INSERT INTO {plm_game} 
-                   (title, sid, game_date, hid, num_players, pot_start, buyin, finished) 
-                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d)", 
+                   (title, sid, game_date, hid, num_players, pot_start, buyin, 
+                    announced, finished) 
+                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d)", 
          $rec->title, $rec->sid,
          $rec->game_date, $rec->hid, $rec->num_players, 
-         $rec->pot_start, $rec->buyin, $rec->finished);
+         $rec->pot_start, $rec->buyin, $rec->announced, $rec->finished);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_game}'), 'gid');
 }
@@ -239,11 +240,11 @@ function _plm_update_game($rec) {
   return db_query("UPDATE {plm_game} 
                    SET title='%s', game_date=%d, 
                    sid=%d, hid=%d, num_players=%d,
-                   pot_start=%d, buyin=%d, finished=%d, list_entrants=%d
+                   pot_start=%d, buyin=%d, announced=%d, finished=%d, list_entrants=%d
                    WHERE gid = %d", 
     $rec->title, $rec->game_date, 
     $rec->sid, $rec->hid, $rec->num_players,
-    $rec->pot_start, $rec->buyin, $rec->finished, $rec->list_entrants,
+    $rec->pot_start, $rec->buyin, $rec->announced, $rec->finished, $rec->list_entrants,
     $rec->gid);
 }
 

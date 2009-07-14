@@ -633,10 +633,25 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 5,
     '#default_value' => $oldrec->buyin+0,
   );
+  $announced = TRUE;
 
-  if ($oldrec->num_players || $oldrec->list_entrants){
+  if ($oldrec){
+    $announced =  $oldrec->announced;
+    if ($oldrec->finished) $announced = TRUE;
+  }
+
+  $form['announced'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('Announced'),
+    '#required' => TRUE,
+    '#default_value' => $announced,
+    '#description' => 'Check this to make the game visible to everyone.',
+    '#weight' => 1,
+  );
+  if ($oldrec->num_players){
     $form['results'] = array(
-      '#value' => theme_plm_game_results($oldrec)
+      '#value' => theme_plm_game_results($oldrec),
+      '#weight' => 90,
     );
     $form['finished'] = array(
       '#type' => 'checkbox',
@@ -644,13 +659,13 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
       '#required' => TRUE,
       '#default_value' => $oldrec->finished,
       '#description' => 'Check this to finalize the results.',
-      '#weight' => 1,
+      '#weight' => 91,
     );
   }
   $form['submit'] = array(
     '#type' => 'submit',
     '#value' => 'Save',
-    '#weight' => 10,
+    '#weight' => 100,
   );
 
   return $form;
@@ -695,8 +710,9 @@ function plm_game_form_submit($form, &$form_state) {
   $rec->pot_start     = $form_state['values']['pot_start'];
   $rec->buyin         = $form_state['values']['buyin'];
   $rec->finished      = $form_state['values']['finished'];
+  $rec->announced      = $form_state['values']['announced'];
   $rec->list_entrants = $form_state['values']['list_entrants'];
-  
+  if ($rec->finished) $rec->announced = 1;
   $host = check_plain(trim($form_state['values']['host_name']));
   if (strlen($host) > 0){ 
     $p = _plm_get_player_by_name($host);

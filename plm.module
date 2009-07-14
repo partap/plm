@@ -1000,14 +1000,15 @@ function theme_plm_game_list($season, $teaser) {
             array('data' => 'Entrants',
             'class' => 'numcol'), 
             'Winner', '');
-  if (user_access('administer poker league')) {
-    $header[] = '';
-  }
+  //if (user_access('administer poker league')) {
+  $header[] = '';
+  //}
   
   $games = _plm_get_games($season->sid);
   
   foreach ($games as $game) {
-    
+    //drupal_set_message("$game->title: announced=$game->announced");
+    if (!($game->announced) && (!user_access('administer poker league'))) continue;
     //$date_str = date("m-d-Y", $game->game_date);
     //$date_str = date("n/j/Y", $game->game_date);
     //$date_str = date("D, M j Y g:iA", $game->game_date);
@@ -1020,14 +1021,11 @@ function theme_plm_game_list($season, $teaser) {
         'data' => $game->num_players ? $game->num_players : '',
         'class' => 'numcol'),
       $game->wid ? l($game->winner, "plm/players/pid/$game->wid") : '',
-      $game->finished ? l(t('results'), "plm/games/$game->gid") : '',
+      $game->finished 
+      ? l(t('results'), "plm/games/$game->gid") 
+      : (user_access('administer poker league')
+        ? l(t('edit'), "plm/games/$game->gid/edit") : ''),
     );
-    if (user_access('administer poker league')) {
-      if ($game->finished)
-        $rowdata[] = '';
-      else
-        $rowdata[] = l(t('edit'), "plm/games/$game->gid/edit");
-    }
     $rows[] = $rowdata;
   }
 
@@ -1438,13 +1436,14 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   return $output;
 }
 
-function theme_plm_results_block($plm_season=NULL, $game=NULL) {
+function theme_plm_results_block($s=NULL, $game=NULL) {
   if (!isset($game)) {
-    if (!isset($plm_season)) 
-      //$plm_season = _plm_get_season(variable_get('plm_current_season', 0));
+    if (!isset($s)) {
       $sid = variable_get('plm_current_season', 0);
+      $s = _plm_get_season(variable_get('plm_current_season', 0));
+    }
     else 
-      $sid = $plm_season;
+      $sid = $s->sid;
     if (!$sid) return '';
     $game = _plm_get_latest_game($sid, TRUE);
     if (!isset($game)) return '';
@@ -1461,7 +1460,8 @@ function theme_plm_results_block($plm_season=NULL, $game=NULL) {
   $fmt = 'D, M j Y';
   $datestr = format_date($game->game_date, 'custom', $fmt);
 
-  $output .= '<div><h3>' . l($game->title, "plm/games/$game->gid") . '</h3></div>';
+  $output .= '<div><h3>' .  
+    l($s->title . ': ' .$game->title, "plm/games/$game->gid") . '</h3></div>';
   $output .= "<div>$datestr</div>";
   $output .= "<div>Host: " . l($game->host, 'plm/players/pid/' . $game->hid) . "</div>";
   $output .= "<div>$game->num_players Players</div>";
