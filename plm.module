@@ -554,9 +554,13 @@ function plm_rankings($plm_season=NULL) {
   $tenth_est  = _plm_get_est_cutoff_points($plm_season, $tenth);
   
   $output .= "<div class=\"eoy_stats\">\n";
-  $output .= "<b>EOY Pool:</b> \$$eoy_total<br/>\n";
-  $output .= "<b>EOY Estimate:</b> \$$eoy_est<br/>\n";
-  $output .= "<b>10th Place Estimate:</b> $tenth_est<br/>\n";
+  if (user_access('access poker league member content')) {
+    $output .= "<b>EOY Pool:</b> \$$eoy_total<br/>\n";
+  }
+  if (user_access('access poker league member content')){
+    $output .= "<b>EOY Estimate:</b> \$$eoy_est<br/>\n";
+  }
+  $output .= "<b>10th Place Estimate:</b> $tenth_est pts<br/>\n";
   $output .= "</div>\n";
   //$caption = $plm_season->title;
   return $output .= theme('table', $header, $rows, $attr, $caption);
@@ -932,7 +936,8 @@ function theme_plm_upcoming_games($season){
     //$output .= '<p> None scheduled<p>';
     return $output;
   }
-  $today = time() + $user->timezone;
+  //$today = time() + $user->timezone;
+  $today = time();
   $fmt = 'D, M j';
   $found_upcoming=FALSE;
   foreach ($games as $g) {
@@ -1561,3 +1566,27 @@ function plm_player_autocomplete($string = '') {
   }
   drupal_json($matches);
 }
+
+// function plm_season_select($form_id='plm_season_sel', $sid=0, $path=''){
+//   $form['season_sel'] = array(
+//     '#type' => 'select',
+//     '#title' => t('Current Season'),
+//     '#description' => 'Season currently underway.  Used for Schedule and Leaderboard.',
+//     '#default_value' => $sid,
+//     '#options' => array(
+//       0 => t('None'),
+//     ),
+//   );
+//   $seasons = _plm_get_seasons();
+//   if (isset($seasons)) {
+//     foreach ($seasons as $s) {
+//       $form['season_sel']['#options'][$s->sid] = $s->title;
+//     }
+//   }
+//   $form['submit'] = array('#type' => 'submit', '#value' => t('Go'));
+//   $form['#action'] = url('search/node');
+//   return $form;
+// }
+// function plm_season_select_form($form_id = 'plm_season_sel') {
+//   return drupal_get_form($form_id);
+// }

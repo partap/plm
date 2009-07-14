@@ -97,6 +97,7 @@ function _plm_get_season_num_games($plm_season) {
   switch ($plm_season->title) {
     case 'Season 5': 
     case 'Season 6': 
+    case 'Season 7': 
       return 26;
     default:
       return 0;
