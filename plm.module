@@ -456,6 +456,7 @@ function plm_rankings($plm_season=NULL) {
   }  
   drupal_set_title("$plm_season->title Rankings");
   
+  $is_member = user_access('access poker league member content');
   $sid = $plm_season->sid;
 
   $header = array(
@@ -475,7 +476,7 @@ function plm_rankings($plm_season=NULL) {
     ),
   );
   // Hide cash stats!
-  if (user_access('access poker league member content')) {
+  if ($is_member) {
     $header[] = array('data' => t('Winnings'));
   }
     // time since last points earned
@@ -520,7 +521,7 @@ function plm_rankings($plm_season=NULL) {
       ),
     );
     // Hide cash stats!
-    if (user_access('access poker league member content')) {
+    if ($is_member) {
       $rowdata[] = array(
         'data' => $rec->cash ? '$' . $rec->cash : '',
         'class' => 'numcol',
@@ -554,10 +555,8 @@ function plm_rankings($plm_season=NULL) {
   $tenth_est  = _plm_get_est_cutoff_points($plm_season, $tenth);
   
   $output .= "<div class=\"eoy_stats\">\n";
-  if (user_access('access poker league member content')) {
+  if ($is_member) {
     $output .= "<b>EOY Pool:</b> \$$eoy_total<br/>\n";
-  }
-  if (user_access('access poker league member content')){
     $output .= "<b>EOY Estimate:</b> \$$eoy_est<br/>\n";
   }
   $output .= "<b>10th Place Estimate:</b> $tenth_est pts<br/>\n";
@@ -581,6 +580,8 @@ function plm_entrant_load($entid) {
 
 function plm_players_list($max_players_per_page=50) {
   global $pager_page_array, $pager_total;
+  $is_member = user_access('access poker league member content');
+  $is_admin = user_access('administer poker league');
 
   $output = '';
   drupal_set_title("All Poker Players");
@@ -606,7 +607,7 @@ function plm_players_list($max_players_per_page=50) {
   }
   // make default sort column active
   // default sorted by winnings if logged in
-  else if (user_access('access poker league member content')) {
+  else if ($is_member) {
     $_GET['order'] = 'Winnings';
     $_GET['sort'] = 'desc';
   }
@@ -638,12 +639,12 @@ function plm_players_list($max_players_per_page=50) {
   );
 
   // Hide cash stats!
-  if (user_access('access poker league member content')) {
+  if ($is_member) {
     $header[] = array('data' => t('Winnings'),
                 'class' => 'numcol',
                 'field' => 'cash' );
   }
-  if (user_access('administer poker league')) {
+  if ($is_admin) {
     $header[] = array('data' => t(''), 'colspan' => 2);
     popups_add_popups();
   }
@@ -663,12 +664,12 @@ function plm_players_list($max_players_per_page=50) {
       array('data' => $rec->points,'class' => 'numcol'),
     );
   // Hide cash stats!
-    if (user_access('access poker league member content')) {
+    if ($is_member) {
       $rowdata[] = array(
         'data' => $rec->cash ? '$' . $rec->cash : '', 
         'class' => 'numcol');    
     }
-    if (user_access('administer poker league')) {
+    if ($is_admin) {
       $rowdata[] = array(
         'data'  => l(t('edit'), 
                  'plm/players/pid/' . $rec->pid . '/edit',
@@ -1000,20 +1001,21 @@ function theme_plm_date_range($season, $teaser) {
 
 function theme_plm_game_list($season, $teaser) {
   //$output = '<p>"theme_plm_game_list"</p>';
+  $is_admin = user_access('administer poker league');
 
   $header = array('Game', 'Date', 'Host', 
             array('data' => 'Entrants',
             'class' => 'numcol'), 
             'Winner', '');
-  //if (user_access('administer poker league')) {
+
   $header[] = '';
-  //}
+
   
   $games = _plm_get_games($season->sid);
   
   foreach ($games as $game) {
     //drupal_set_message("$game->title: announced=$game->announced");
-    if (!($game->announced) && (!user_access('administer poker league'))) continue;
+    if (!($game->announced) && (!$is_admin)) continue;
     //$date_str = date("m-d-Y", $game->game_date);
     //$date_str = date("n/j/Y", $game->game_date);
     //$date_str = date("D, M j Y g:iA", $game->game_date);
@@ -1028,7 +1030,7 @@ function theme_plm_game_list($season, $teaser) {
       $game->wid ? l($game->winner, "plm/players/pid/$game->wid") : '',
       $game->finished 
       ? l(t('results'), "plm/games/$game->gid") 
-      : (user_access('administer poker league')
+      : ($is_admin
         ? l(t('edit'), "plm/games/$game->gid/edit") : ''),
     );
     $rows[] = $rowdata;
@@ -1091,6 +1093,8 @@ function theme_plm_game_details($game, $season=NULL) {
   else 
     $s = _plm_get_season($game->sid);
 
+  $is_member = user_access('access poker league member content');
+
   $label = 'Season';
   $title = $s->title;
   $output .= "$label: " . l(t("@title", array('@title'=>$title)),
@@ -1112,7 +1116,7 @@ function theme_plm_game_details($game, $season=NULL) {
     $num_players = $game->num_players;
     $output .= "<div class=\"num_players\">$label: $num_players</div>";
     //$output .= theme_plm_game_num_players($game);
-    if (user_access('access poker league member content')) {
+    if ($is_member) {
       $output .= "<div>Initial Pot: \$$game->pot_start</div>\n";
       $output .= "<div>Buy-in: \$$game->buyin</div>\n";
       $pot_total = $game->pot_start + $game->buyin * $game->num_players;
@@ -1184,20 +1188,22 @@ function _plm_result_row($result) {
 
 function theme_plm_game_results($game) {
   $gid = $game->gid;
+  $is_member = user_access('access poker league member content');
+  $is_admin = user_access('administer poker league');
 
   $results = _plm_get_results($gid);
   
-  if (!$results && !user_access('administer poker league')){
+  if (!$results && !$is_admin){
     return '<p>No Results Posted</p>';
   }
   $header = array(
     'Place', 'Player', 'Points', 
   );
   // Hide cash stats!
-  if (user_access('access poker league member content')) {
+  if ($is_member) {
     $header[] = '$$$';
   }
-  if (user_access('administer poker league')){
+  if ($is_admin){
     //$header[] = 'Operation';
     $header[] = '';
     popups_add_popups();
@@ -1219,7 +1225,7 @@ function theme_plm_game_results($game) {
       $r = _plm_result_new($game, $place);
     }
     $row = _plm_result_row($r);
-    if (user_access('administer poker league')){
+    if ($is_admin){
       if ($game->finished) 
         $row[] = '';
       else{
@@ -1236,7 +1242,7 @@ function theme_plm_game_results($game) {
 
   // make sure the payouts add up,
   // but if we don't have access to cash stats, skip it
-  if (user_access('access poker league member content')) {
+  if ($is_member) {
     $pre = '$';
     if ($rem > 0) $style = 'color: #006600';
     else if ($rem < 0){
@@ -1252,7 +1258,7 @@ function theme_plm_game_results($game) {
       array('data' => 'Pot Remaining', 'header' => 1, 'colspan' => 3),
       array('data' => $pre . $rem . $post, 'style' => $style),
     );
-    if (user_access('administer poker league')){
+    if ($is_admin){
       $lastrow[] = array('data' => '');
     }
     $rows[] = array('class' => 'subtot', 'data' => $lastrow);
@@ -1471,13 +1477,15 @@ function theme_plm_results_block($s=NULL, $game=NULL) {
   $output .= "<div>Host: " . l($game->host, 'plm/players/pid/' . $game->hid) . "</div>";
   $output .= "<div>$game->num_players Players</div>";
   $output .= "</div>";
-  
+
+  $is_member = user_access('access poker league member content');
+
   foreach ($results as $r) {
     $rowdata = array( 
       _plm_format_place($r->place),
       l($r->name, 'plm/players/pid/' . $r->pid)
     );
-    if (user_access('access poker league member content')) {
+    if ($is_member) {
       $rowdata[] = '$' . $r->cash;
     }
     $rows[] = $rowdata;
@@ -1504,9 +1512,10 @@ function plm_entrants_list($plm_game) {
 }
 
 function theme_plm_game_entrants($plm_game, $entrants) {
+  $is_admin = user_access('administer poker league');
   
   if (!$entrants && 
-    ($game->finished && !user_access('administer poker league'))) {
+    ($game->finished && !$is_admin)) {
     return '';
   }
   
@@ -1514,7 +1523,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
     '#','Name'
   );
   
-  if (!$plm_game->finished && user_access('administer poker league')) {
+  if (!$plm_game->finished && $is_admin) {
     $headers[] = '';
     popups_add_popups();
   }
@@ -1526,7 +1535,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
         ++$num,
         l($ent->name, "plm/players/pid/$ent->pid"),
       );
-      if (!$plm_game->finished && user_access('administer poker league')) {
+      if (!$plm_game->finished && $is_admin) {
         $rowdata[] = 
           l('edit', "plm/entrants/$ent->entid/edit",
             array('query' => drupal_get_destination(),
@@ -1541,7 +1550,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
     }
   }
   
-  if (!$plm_game->finished && user_access('administer poker league')) {
+  if (!$plm_game->finished && $is_admin) {
     $addlink = '<div>';
     $addlink .= l('Add Entrant', "plm/games/$plm_game->gid/entrants/add",
                array('query' => drupal_get_destination(),
@@ -1551,7 +1560,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
   }
   if ($rows){
     $output .= theme('table', $headers, $rows, $attr);
-    if (!$plm_game->finished && user_access('administer poker league')) {
+    if (!$plm_game->finished && $is_admin) {
       $output .= $addlink;
     }
   }
