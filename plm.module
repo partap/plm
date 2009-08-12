@@ -8,27 +8,30 @@
  *   - Main Page
  *     - Recent News (results, announcements)
  *   - Blocks
- *     - Leaderboard, Last Results, Next Game
+ *     -DONE Leaderboard, 
+       -DONE Last Results, 
+       - Next Game
  *   - Players
- *     - list all, browse 
+ *     -DONE list all
+       - browse (search by nick, real name)
  *   - Results (browse past games, other seasons)
- *     - games listed under plm/games/%game because we don't want to need
+ *     -DONE games listed under plm/games/%game because we don't want to need
  *       the sid AND the gid.  Once we load the game, 
  *       we have sid and so we can either rewrite breadcrumbs,
  *       or use a custom seasons browsing menu or selector...investigate ?destination=xxx...
- *   - Schedule (upcoming games)
- *   - Current Rankings
+ *   -DONE Schedule (upcoming games)
+ *   -DONE Current Rankings
 
  * - Handle final table  - Accumulate rakes?
  * - Publish game results when done (custom node type?)
  *   - send email to list
  *   - Allow comments, messages to admin
  * - Permissions
- *   -XXX Hide money stats from non-verified users
- *   - Tie user accounts to player ids
+ *   -DONE Hide money stats from non-verified users
+ *   -DONE Tie user accounts to player ids
  *   - require password for deleting seasons/players (popup?)
- * - Theming (make it purty)
- * - pulldown select/autocomplete for player names
+ * -DONE Theming (make it purty)
+ * -DONE pulldown select/autocomplete for player names
  * - popups for creating referenced recs on the fly.  
  *     eg. import data or new game (create season), 
  *         results (create player)
