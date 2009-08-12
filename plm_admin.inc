@@ -314,8 +314,8 @@ function plm_player_form(&$form_state, $player=NULL) {
     '#size'               => 20,
     '#maxlength'          => 60,
     '#autocomplete_path'  => 'plm/autocomplete/player',                  
-    '#default_value' => $player->name,
-    '#required' => TRUE,
+    '#default_value'      => $player->name,
+    '#required'           => TRUE,
   );
 
   if ($player->uid){
@@ -908,9 +908,13 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
 
   $form['name'] = array(
    '#type' => 'textfield',
-    '#title' => 'Player Name',
-    '#autocomplete_path'  => 'plm/autocomplete/player',                  
-    '#default_value' => $player->name,
+   '#title' => 'Player Name',
+   '#autocomplete_path'  => 'plm/autocomplete/player',                  
+   '#default_value' => $player->name,
+   '#required'      => true,
+   // attempting to turn off firefox's autofill...it draws over drupal's autofill in popups
+   // ...this doesn't work though
+   //'#attributes'         => array('autocomplete' => false),
   );
   $form['_new_player'] = array(
     '#type' => 'checkbox',

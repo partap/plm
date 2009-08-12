@@ -648,8 +648,8 @@ function plm_players_list($max_players_per_page=50) {
                 'field' => 'cash' );
   }
   if ($is_admin) {
-    $header[] = array('data' => t(''), 'colspan' => 2);
-    popups_add_popups();
+    $header[] = array('data' => t(''), 'colspan' => 1);
+    //popups_add_popups();
   }
   $q = tablesort_sql($header);
   $players = _plm_get_players($q, '', $max_players_per_page);
@@ -675,12 +675,14 @@ function plm_players_list($max_players_per_page=50) {
     if ($is_admin) {
       $rowdata[] = array(
         'data'  => l(t('edit'), 
-                 'plm/players/pid/' . $rec->pid . '/edit',
-                 array('attributes' => array('class' => 'popups-form'))),
+                 'plm/players/pid/' . $rec->pid . '/edit'),
+                 //array('attributes' => array('class' => 'popups-form'))),
         'class' => 'narrowcol');
-      $rowdata[] = array(
-        'data' => l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete'),
-        'class' => 'narrowcol');
+
+      // No, don't make it too easy to delete a player
+      //$rowdata[] = array(
+      //  'data' => l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete'),
+      //  'class' => 'narrowcol');
     }
     $rows[] = $rowdata;
   }
@@ -1602,3 +1604,50 @@ function plm_player_autocomplete($string = '') {
 // function plm_season_select_form($form_id = 'plm_season_sel') {
 //   return drupal_get_form($form_id);
 // }
+
+
+// implementation of hook_user
+function plm_user($op, &$edit, &$account, $category = NULL) {
+  if ($op == 'form') {
+    if ($category == 'account') {
+      // We are at edit screen. Load form data for 'Real Name' category.
+      $form = profile_form_profile($edit, $user, 'Real Name');
+      $form['Real Name']['#weight'] = -9;
+      $form['Real Name']['#attributes'] = array('id' => 'realname');
+      $form['Real Name']['#title'] = t('Poker League');
+      $player = _plm_get_player_by_uid($account->uid);
+      //drupal_set_message('<pre>'.print_r($player, TRUE).'</pre>');
+      //drupal_set_message('<pre>'.print_r(NULL, TRUE).'</pre>');
+      $name = ($player->pid > 0) ?
+        l($player->name, 'plm/players/pid/' . $player->pid) : 'None';
+      //$form['Real Name']['Player Name'] = array(
+      //'#type' => 'textfield',
+      //'#value'       => "<h3>Player Name</h3>"$name,
+      //'#title' => 'Player Name',
+      //'#disabled' => true,
+      //'#description' => 'This is the name that is used in the game stats.',
+      //);
+      $form['Real Name']['Player Name'] = array(
+        '#value' => 
+        "<div class=\"form-item\">
+        <label>Player Name:</label> 
+         $name
+         <div class=\"description\">
+           This is the short name that is used in the game stats.
+         </div>
+         </div>",
+      );
+    }
+    return $form;
+  }
+}
+
+
+// function plm_form_user_profile_form_alter(&$form, $form_state) {
+   //      drupal_set_message('<pre>' . print_r($form, TRUE) . '</pre>');
+//   $form_id = 'user_profile_form';
+//   $form['myid'] = array(
+//     '#value' => "<p><b>$form_id</b></p>",
+//     '#weight' => -10000,
+//   );
+//}

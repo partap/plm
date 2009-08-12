@@ -15,6 +15,13 @@ function _plm_get_player_by_name($name) {
   $res = db_fetch_object(db_query($sql, $name));
   return $res;
 }
+function _plm_get_player_by_uid($uid) {
+  if ($uid == 0) return NULL;
+  $sql = "SELECT * FROM {plm_player}
+            WHERE uid=%d";
+  $res = db_fetch_object(db_query($sql, $uid));
+  return $res;
+}
 
 function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
   if (!$sort_phrase) $sort_phrase = "ORDER BY name";
