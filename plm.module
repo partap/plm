@@ -1610,24 +1610,24 @@ function plm_player_autocomplete($string = '') {
 function plm_user($op, &$edit, &$account, $category = NULL) {
   if ($op == 'form') {
     if ($category == 'account') {
-      // We are at edit screen. Load form data for 'Real Name' category.
-      $form = profile_form_profile($edit, $user, 'Real Name');
-      $form['Real Name']['#weight'] = -9;
-      $form['Real Name']['#attributes'] = array('id' => 'realname');
-      $form['Real Name']['#title'] = t('Poker League');
+      // We are at edit screen. Load form data for 'Poker League' category.
+      $form = profile_form_profile($edit, $user, 'Poker League');
+      $form['Poker League']['#weight'] = -9;
+      $form['Poker League']['#attributes'] = array('id' => 'pokerleague');
+      $form['Poker League']['#title'] = t('Poker League');
       $player = _plm_get_player_by_uid($account->uid);
       //drupal_set_message('<pre>'.print_r($player, TRUE).'</pre>');
       //drupal_set_message('<pre>'.print_r(NULL, TRUE).'</pre>');
       $name = ($player->pid > 0) ?
         l($player->name, 'plm/players/pid/' . $player->pid) : 'None';
-      //$form['Real Name']['Player Name'] = array(
+      //$form['Poker League']['Player Name'] = array(
       //'#type' => 'textfield',
       //'#value'       => "<h3>Player Name</h3>"$name,
       //'#title' => 'Player Name',
       //'#disabled' => true,
       //'#description' => 'This is the name that is used in the game stats.',
       //);
-      $form['Real Name']['Player Name'] = array(
+      $form['Poker League']['Player Name'] = array(
         '#value' => 
         "<div class=\"form-item\">
         <label>Player Name:</label> 
