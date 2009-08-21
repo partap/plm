@@ -587,7 +587,7 @@ function plm_entrant_load($entid) {
   return _plm_get_entrant($entid);
 }
 
-function plm_players_list($max_players_per_page=50) {
+function plm_players_list($max_players_per_page=100) {
   global $pager_page_array, $pager_total;
   $is_member = user_access('access poker league member content');
   $is_admin = user_access('administer poker league');
