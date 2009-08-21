@@ -139,6 +139,7 @@ function _plm_get_seasons() {
     FROM {plm_season} s 
     ORDER BY end_dt DESC, s.start_date DESC";
   $result = db_query($sql);
+  $res = array();
   while ($rec = db_fetch_object($result)) {
     $res[] = $rec;
   }

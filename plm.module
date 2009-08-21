@@ -449,7 +449,12 @@ function plm_main() {
 }
 
 function plm_rankings($plm_season=NULL) {
+  //$session_sid = $_SESSION['ranking_sid'];
   $current_sid=variable_get('plm_current_season', 0);
+
+  //if (!isset($plm_season) && $session_sid > 0){
+  //  $plm_season = _plm_get_season($session_sid);
+  //}
   if (!isset($plm_season)){
     $plm_season = _plm_get_season($current_sid);
   }
@@ -458,9 +463,10 @@ function plm_rankings($plm_season=NULL) {
     return $output;
   }  
   drupal_set_title("$plm_season->title Rankings");
-  
+
   $is_member = user_access('access poker league member content');
   $sid = $plm_season->sid;
+  $output .= drupal_get_form('plm_ranking_season_form', $sid);
 
   $header = array(
     array(
@@ -1651,3 +1657,35 @@ function plm_user($op, &$edit, &$account, $category = NULL) {
 //     '#weight' => -10000,
 //   );
 //}
+
+function plm_ranking_season_form($form_state, $selection_id = 0) {
+  //drupal_set_message("plm_ranking_season_form(" . print_r($selection_id, true) .")");
+  $seasons = _plm_get_seasons();
+  if (!isset($seasons) || count($seasons) < 2) return NULL;
+
+  $options = array();//(0 => ' Select a season');
+  foreach ($seasons as $s) {
+    $label = $s->title;
+    //if ($s->sid == $selection_id) $label = "<b>$label</b>";
+    $options[$s->sid] = $label;//$s->title;
+  }
+  $form['season_sel'] = array(
+     '#type'          => 'select',
+     '#default_value' => $selection_id,
+     '#options'       => $options,
+  );
+  $form['season_submit'] = array(
+    '#type'           => 'submit',
+    '#value'          => 'Go',
+  );
+  return $form;
+}
+
+function plm_ranking_season_form_submit($form, &$form_state) {
+  $op = $form_state['values']['op'];
+  $sid = $form_state['values']['season_sel'];
+  $season = _plm_get_season($sid);
+  //drupal_set_message('Selected ' . $season->title);
+  //$_SESSION['ranking_sid'] = $sid;
+  $form_state['redirect'] = "plm/seasons/$sid/rankings";
+}
