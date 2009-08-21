@@ -1633,7 +1633,7 @@ function plm_user($op, &$edit, &$account, $category = NULL) {
         <label>Player Name:</label> 
          $name
          <div class=\"description\">
-           This is the short name that is used in the game stats.
+           This is the name that is used in the game stats.
          </div>
          </div>",
       );
