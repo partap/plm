@@ -665,9 +665,18 @@ function plm_players_list($max_players_per_page=50) {
   if ($page > 0) $resnum = $page * $max_players_per_page;
   foreach ($players as $rec) {
     $resnum++;
+    $username = '';
+
+    if ($is_admin) {
+      $player_user = $rec->uid ? user_load($rec->uid) : NULL;
+      //drupal_set_message("$rec->name: $rec->uid ($player_user->name)");
+      if ($player_user) {
+        $username = " ($player_user->name)";
+      }
+    }
     $rowdata = array(
       array('data' => $resnum, 'class' => 'numcol',),
-      l($rec->name, 'plm/players/pid/' . $rec->pid),
+      l($rec->name, 'plm/players/pid/' . $rec->pid) . $username,
       array('data' => $rec->wins, 'class' => 'numcol'),
       array('data' => $rec->places ? $rec->places : '0', 'class' => 'numcol'),
       array('data' => $rec->points,'class' => 'numcol'),
@@ -690,6 +699,7 @@ function plm_players_list($max_players_per_page=50) {
       //  'data' => l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete'),
       //  'class' => 'narrowcol');
     }
+    //$rows[] = array('data' => $rowdata, 'class' => $rowclass);
     $rows[] = $rowdata;
   }
 

@@ -25,11 +25,11 @@ function _plm_get_player_by_uid($uid) {
 
 function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
   if (!$sort_phrase) $sort_phrase = "ORDER BY name";
-  $sql = "SELECT p.pid, p.name, 
+  $sql = "SELECT p.pid, p.name, p.uid,
           SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places,
           SUM(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins
           FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid " 
-          . $where_phrase . "GROUP BY p.pid, p.name " . $sort_phrase . " NULLS LAST";  
+          . $where_phrase . "GROUP BY p.pid, p.name, p.uid " . $sort_phrase . " NULLS LAST";  
   //drupal_set_message("SQL1: $sql");
   if ($max > 0){
     $count_qry = 'SELECT count(*) from {plm_player}';
