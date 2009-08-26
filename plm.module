@@ -916,8 +916,8 @@ function plm_seasons_list() {
   $fmt = 'D, M j Y';
   $current = variable_get('plm_current_season', 0);
   foreach ($seasons as $s) {
-    $datestr = format_date($s->start_date, 'custom', $fmt);
-    if ($s->end_date) $datestr .= " to " . format_date($s->end_date, 'custom', $fmt);
+    $datestr = format_date($s->start_date, 'custom', $fmt, 0);
+    if ($s->end_date) $datestr .= " to " . format_date($s->end_date, 'custom', $fmt, 0);
     else $datestr = 'Started ' . $datestr;
     //$output .= "<p>item($s->title, $datestr)</p>";
     
@@ -963,8 +963,11 @@ function theme_plm_upcoming_games($season){
   $fmt = 'D, M j';
   $found_upcoming=FALSE;
   foreach ($games as $g) {
-    //if (!($g->hid)) continue;
-    $datestr = format_date($g->game_date, 'custom', $fmt);
+    // Adjust for timezone if date is set to midnight
+    //if (!($g->game_date % 86400))
+    //  $g->game_date -= $user->timezone;
+    //  Pass 0 for timezone arg to prevent conversion of date
+    $datestr = format_date($g->game_date, 'custom', $fmt, 0);
     $days = ($g->game_date - $today) / 86400;
     $daystr=NULL;
     if ($days == 0) $daystr = 'Tonight';
@@ -1000,7 +1003,9 @@ function theme_plm_date_range($season, $teaser) {
   $now = gmmktime();
   if ($season->start_date < $now) $label = 'Started';
   $fmt = 'D, M j, Y';
-  $datestr = date($fmt, $season->start_date);
+  //$datestr = date($fmt, $season->start_date);
+  // Don't do timezone conversion
+  $datestr = format_date($season->start_date, 'custom', $fmt, 0);
   $output .= t(
     '<div>@label: @datestr</div>', array(
       '@label' => $label, 
@@ -1011,7 +1016,9 @@ function theme_plm_date_range($season, $teaser) {
   
   $label = 'Ends';
   if ($season->end_date < $now) $label = 'Ended';
-  $datestr = date($fmt, $season->end_date);
+  //$datestr = date($fmt, $season->end_date);
+  // Don't do timezone conversion
+  $datestr = format_date($season->end_date, 'custom', $fmt, 0);
   $output .= t(
     '<div>@label: @datestr</div>',
     array(
@@ -1021,6 +1028,7 @@ function theme_plm_date_range($season, $teaser) {
 }
 
 function theme_plm_game_list($season, $teaser) {
+  global $user;
   //$output = '<p>"theme_plm_game_list"</p>';
   $is_admin = user_access('administer poker league');
 
@@ -1031,16 +1039,26 @@ function theme_plm_game_list($season, $teaser) {
 
   $header[] = '';
 
-  
+
   $games = _plm_get_games($season->sid);
   
   foreach ($games as $game) {
     //drupal_set_message("$game->title: announced=$game->announced");
     if (!($game->announced) && (!$is_admin)) continue;
+
+    // Dates are stored in unix epoch format in db (gmt), but the date widget 
+    // truncates it to the day.  Problem is that format_date() assumes it's an exact time 
+    // and will convert the date to our time zone first, 
+    // displaying the previous date if the value has been truncated. 
+
+    //if (!($game->game_date % 86400))
+    //  $game->game_date -= $user->timezone;
+
     //$date_str = date("m-d-Y", $game->game_date);
     //$date_str = date("n/j/Y", $game->game_date);
     //$date_str = date("D, M j Y g:iA", $game->game_date);
-    $date_str = date("D, M j Y", $game->game_date);
+    ///$date_str = date("D, M j Y", $game->game_date);
+    $date_str = format_date($game->game_date,'custom',"D, M j Y", 0);
     $rowdata = array(
       l($game->title, "plm/games/$game->gid"),
       $date_str,
@@ -1123,7 +1141,8 @@ function theme_plm_game_details($game, $season=NULL) {
   //$output .= theme_plm_game_season($s);
   $label = 'Game Date';
   $fmt = 'D, M j Y';
-  $datestr = date($fmt, $game->game_date);
+  //$datestr = date($fmt, $game->game_date);
+  $datestr = format_date($game->game_date, 'custom', $fmt, 0);
   $output .= "<div class=\"pl_game_date\">$label: $datestr</div>";
   //$output .= theme_plm_game_date($game);
   $label = 'Host';
@@ -1150,7 +1169,7 @@ function theme_plm_game_details($game, $season=NULL) {
 function theme_plm_game_date($game) {
   $label = 'Game Date';
   $fmt = 'D, M j Y';
-  $datestr = date($fmt, $game->game_date);
+  $datestr = format_date($game->game_date, 'custom', $fmt, 0);
   $output .= "<div class=\"pl_game_date\">$label: $datestr</div>";
   return $output;
 }
@@ -1457,7 +1476,7 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   //$caption = $plm_season->title;
   if ($has_newpoints){
     $fmt = 'D, n/j/y';
-    $datestr = format_date($game->game_date, 'custom', $fmt);
+    $datestr = format_date($game->game_date, 'custom', $fmt, 0);
     $output .= "<div class=\"newpoints\">Updated $datestr<br/>";
     $days = format_plural($update_age, '1 day', '@count days');
     $output .= "($days ago)</div>";
@@ -1490,7 +1509,7 @@ function theme_plm_results_block($s=NULL, $game=NULL) {
   $output = "<div class=\"plm-game-info\">";
   
   $fmt = 'D, M j Y';
-  $datestr = format_date($game->game_date, 'custom', $fmt);
+  $datestr = format_date($game->game_date, 'custom', $fmt, 0);
 
   $output .= '<div><h3>' .  
     l($s->title . ': ' .$game->title, "plm/games/$game->gid") . '</h3></div>';

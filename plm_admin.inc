@@ -134,6 +134,7 @@ function plm_season_form(&$form_state, $rec = NULL) {
 
 
   $format = 'n/j/Y';
+  $widget_fmt = 'Y-m-d H:i:s';
   $form['start_date'] = array(
     '#type'          => 'date_popup',
     '#title'         => t('Start Date'),
@@ -141,7 +142,8 @@ function plm_season_form(&$form_state, $rec = NULL) {
     '#date_format' => $format,
   );
   if ($rec->start_date) 
-    $form['start_date']['#default_value'] = date('Y-m-d H:i:s', $rec->start_date);
+    $form['start_date']['#default_value'] = format_date($rec->start_date, 'custom', 
+                                            $widget_fmt, 0);
     
   $form['end_date'] = array(
     '#type'          => 'date_popup',
@@ -151,7 +153,8 @@ function plm_season_form(&$form_state, $rec = NULL) {
   );
   $end_date = $rec->end_date;
   if ($end_date)
-    $form['end_date']['#default_value'] = date('Y-m-d H:i:s', $end_date);
+    $form['end_date']['#default_value'] = format_date($end_date, 'custom',
+                                          $widget_fmt, 0);
   
   // Generate blank schedule for a new season
   $form['sched'] = array(
@@ -535,12 +538,9 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 32,
     '#weight' => -5
   );
-  $tz_offset = $user->timezone;
-  //drupal_set_message('<pre>' . print_r($user, TRUE) . '</pre>');
-  //$form['tzoffset'] = array(
-  //  '#value' => "<p><b>tzoffset:</b> $tz_offset</p>",
-  //);
+
   $fmt = 'D, M j Y';
+  $widget_fmt = 'Y-m-d H:i:s';
   $game_date = $oldrec->game_date;
   if (!$game_date){
     //$game_date = gmmktime();
@@ -558,14 +558,9 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#title'         => t('Game Date'),
     '#required'      => TRUE,
     '#date_format' => $fmt,
-    '#default_value' => date('Y-m-d H:i:s', $game_date),
+    '#default_value' => format_date($game_date, 'custom', $widget_fmt, 0),
   );
   
-  /* $date_str = date($fmt, $game_date); */
-  /* $content = "<p>default date: $game_date ($date_str)</p>"; */
-  /* $form['new_date'] = array( */
-  /*   '#value' => $content, */
-  /* ); */
   if ($oldrec->hid){
     $rec = _plm_get_player($oldrec->hid);
     $host = $rec->name;
