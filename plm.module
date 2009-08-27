@@ -977,12 +977,13 @@ function theme_plm_upcoming_games($season){
     //drupal_set_message("$g->title: $days days");
     if ($days == 0) $daystr = 'Tonight';
     else if ($days == 1) $daystr = 'Tomorrow';
-    else if ($days < 7) $daystr = 'This week';
-    else continue;
-    // else if ($days < 14) {
-    //   $weeks = ceil($days/7);
-    //   $daystr = "In $weeks weeks";
-    // }
+    else if ($days < 7) $daystr = 'This Week';
+    //else continue;
+    else if ($days < 14) {$daystr = 'Next Week';}
+    else if ($days < 28) {
+       $weeks = ceil($days/7);
+       $daystr = "In $weeks Weeks";
+     }
     if (!$found_upcoming){
       $output .= '<div class="upcoming">';
       $output .= "<h2>Upcoming games:</h2>";
