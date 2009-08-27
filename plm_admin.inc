@@ -886,20 +886,19 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
     $form['_entrant'] = array('#type' => 'value', '#value' => $oldrec);
     $player = _plm_get_player($oldrec->pid);
   }
-  else {
-    drupal_set_title("New Entrant");
-  }
+  //else {
+  //  drupal_set_title("New Entrant");
+  //}
   $game_title = $game->title;
   $gid = $game->gid;
 
   $form['_gid'] = array('#type' => 'value', '#value' => $gid);
 
-  $form['game'] = array(
-    '#title'         => t('Game'),
-    '#value' => '<h3>' . l($game_title, "plm/games/$gid") . '</h3>',
-    "#weight" => -20,
-
-  );
+  // $form['game'] = array(
+  //   '#title'         => t('Game'),
+  //   '#value' => '<h3>' . l($game_title, "plm/games/$gid") . '</h3>',
+  //   "#weight" => -20,
+  // );
 
   $form['name'] = array(
    '#type' => 'textfield',
@@ -907,9 +906,8 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
    '#autocomplete_path'  => 'plm/autocomplete/player',                  
    '#default_value' => $player->name,
    '#required'      => true,
-   // attempting to turn off firefox's autofill...it draws over drupal's autofill in popups
-   // ...this doesn't work though
-   //'#attributes'         => array('autocomplete' => false),
+   // Set initial focus
+   '#attributes'    => array('class' => 'focus'),
   );
   $form['_new_player'] = array(
     '#type' => 'checkbox',
@@ -918,15 +916,26 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
     '#description' => 'Is this a new player to be added to the league roster?',
   );
 
+  $submit_label = isset($oldrec)?'Save':'Add Player';
   $form['submit'] = array(
     '#type' => 'submit',
-    '#value' => 'Save',
+    '#value' => $submit_label,
   );
-  $form['delete'] = array(
-    '#type' => 'button',
-    '#value' => 'Delete',
-    '#submit' => 'plm_entrant_delete_submit',
-  );
+  // swiped from focus.module
+  //$selector = '#'. $form['#id'] .' input';
+  //$selector = '#edit-name';
+  $selector = '.focus';
+  $jquery_snippet = 
+    '$(document).ready(function(){
+     var i = $("'. $selector .'").not("[@type=\'hidden\']");
+     if (i.val() != "") {}
+     i[0].focus();});'; 
+  drupal_add_js($jquery_snippet, 'inline'); 
+  //$form['delete'] = array(
+  //  '#type' => 'button',
+  //  '#value' => 'Delete',
+  //  '#submit' => 'plm_entrant_delete_submit',
+  //);
   return $form;  
   
 

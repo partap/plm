@@ -42,7 +42,7 @@
 require_once drupal_get_path('module', 'plm') .'/plm.inc';
 require_once drupal_get_path('module', 'plm') .'/plm_db.inc';
 require_once drupal_get_path('module', 'plm') .'/plm_file.inc';
-require_once drupal_get_path('module', 'plm') .'/plm_node.inc';
+require_once drupal_get_path('module', 'plm') .'/plm_admin.inc';
 
 
 /*
@@ -210,7 +210,7 @@ function plm_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_entrant_form',  NULL, 2),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
     'file' => 'plm_admin.inc',
   );
@@ -220,7 +220,7 @@ function plm_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_entrant_form', 2),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
     'file' => 'plm_admin.inc',
   );
@@ -230,7 +230,7 @@ function plm_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_entrant_confirm_delete', 2),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_LOCAL_TASK,
+    'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
     'file' => 'plm_admin.inc',
   );
@@ -1547,6 +1547,7 @@ function plm_entrants_list($plm_game) {
   drupal_set_title($title);
 
   $entrants = _plm_get_game_entrants($plm_game->gid);
+  
   $output .= theme_plm_game_entrants($plm_game, $entrants);
   return $output;
 }
@@ -1565,6 +1566,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
   
   if (!$plm_game->finished && $is_admin) {
     $headers[] = '';
+    drupal_add_js('misc/autocomplete.js');
     popups_add_popups();
   }
   
@@ -1596,13 +1598,14 @@ function theme_plm_game_entrants($plm_game, $entrants) {
                array('query' => drupal_get_destination(),
                  'attributes' => array('class' => 'popups-form')));
     $addlink .= '</div>';
-    $output .= $addlink;
+    //$output .= $addlink;
+    $output .= drupal_get_form('plm_entrant_form', NULL, $plm_game);
   }
   if ($rows){
     $output .= theme('table', $headers, $rows, $attr);
-    if (!$plm_game->finished && $is_admin) {
-      $output .= $addlink;
-    }
+    //if (!$plm_game->finished && $is_admin) {
+    //  $output .= $addlink;
+    //}
   }
   return $output;
   
