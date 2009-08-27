@@ -958,8 +958,12 @@ function theme_plm_upcoming_games($season){
     //$output .= '<p> None scheduled<p>';
     return $output;
   }
-  //$today = time() + $user->timezone;
-  $today = time();
+  $today = time() + $user->timezone;
+  //$today = time();
+  //drupal_set_message("Today1: $today");
+  $today = (int)($today/86400);
+  $today *= 86400;
+  //drupal_set_message("Today2: $today");
   $fmt = 'D, M j';
   $found_upcoming=FALSE;
   foreach ($games as $g) {
@@ -970,6 +974,7 @@ function theme_plm_upcoming_games($season){
     $datestr = format_date($g->game_date, 'custom', $fmt, 0);
     $days = ($g->game_date - $today) / 86400;
     $daystr=NULL;
+    drupal_set_message("$g->title: $days days");
     if ($days == 0) $daystr = 'Tonight';
     else if ($days == 1) $daystr = 'Tomorrow';
     else if ($days < 7) $daystr = 'This week';
