@@ -1169,6 +1169,7 @@ function theme_plm_game_details($game, $season=NULL) {
       $output .= "<div>Total Pot: \$$pot_total</div>\n";
     }
     $output .= theme_plm_game_results($game);
+    $output .=  plm_entrants_list($game);
   }
   return $output;
 }
