@@ -746,9 +746,6 @@ function theme_plm_player_details($player) {
 
   foreach ($places as $r) {
     // Season Totals
-    if ($sid != $r->sid){
-      $s = plm_season_load($r->sid);
-    }
     if ($sid && $sid != $r->sid){
       $rowdata = array(
         array('data' => t("$s->title Total"), 'colspan' => 4, 'header' => 1),
@@ -769,6 +766,9 @@ function theme_plm_player_details($player) {
       $tot_wins   += $s_wins[$sid];
       $tot_places += $s_places[$sid];
       
+    }
+    if ($sid != $r->sid){
+      $s = plm_season_load($r->sid);
     }
     
     $rowdata = array(
