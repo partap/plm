@@ -1051,12 +1051,12 @@ function theme_plm_game_list($season, $teaser) {
   foreach ($games as $game) {
     //drupal_set_message("$game->title: announced=$game->announced");
     if (!($game->announced) && (!$is_admin)) continue;
-
+    
     // Dates are stored in unix epoch format in db (gmt), but the date widget 
     // truncates it to the day.  Problem is that format_date() assumes it's an exact time 
     // and will convert the date to our time zone first, 
     // displaying the previous date if the value has been truncated. 
-
+    
     //if (!($game->game_date % 86400))
     //  $game->game_date -= $user->timezone;
 
@@ -1078,7 +1078,21 @@ function theme_plm_game_list($season, $teaser) {
       : ($is_admin
         ? l(t('edit'), "plm/games/$game->gid/edit") : ''),
     );
-    $rows[] = $rowdata;
+    $rowclass = NULL;
+    if ($game->announced){
+      $rowclass = 'announced';
+    }
+    if ($game->finished) {
+      $rowclass = 'finished';
+    }
+    if (!$rowclass){
+      $rows[] = $rowdata;
+      continue;
+    }
+    $rows[] = array(
+      'data' => $rowdata,
+      'class' => $rowclass);
+    
   }
 
   $output .= theme('table', $header, $rows);
