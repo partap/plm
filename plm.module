@@ -1422,7 +1422,8 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
     $plm_season = plm_season_load(variable_get('plm_current_season', 0));
   }
   if ( !isset($plm_season) ) {
-    return '<p>No Current Season!</p>';
+    $output .= '<p>No Current Season!</p>';
+    return $output;
   }
   $has_newpoints = FALSE;
   $tz_offset = $user->timezone;
@@ -1443,7 +1444,6 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   //   //array('data' => t('Winnings')),
   //   //array('data' => t('Places')),
   // );
-
   $players = _plm_get_rankings($plm_season->sid);
   if (!$players) {
     $output .= '<p>No Results Found</p>';
@@ -1503,7 +1503,7 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   }
   $attr = array('class' => 'compact-table');
   $output .= theme('table', $header, $rows, $attr, $caption);
-  $output .= l(t('More...'), "plm/seasons/$plm_season->sid/rankings");
+  $output .= '<div class="more">' . l(t('More...'), "plm/seasons/$plm_season->sid/rankings") . '</div>';
   return $output;
 }
 
