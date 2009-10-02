@@ -1534,8 +1534,8 @@ function theme_plm_results_block($s=NULL, $game=NULL) {
   $output .= '<div><h3>' .  
     l($s->title . ': ' .$game->title, "plm/games/$game->gid") . '</h3></div>';
   $output .= "<div>$datestr</div>";
-  $output .= "<div>Host: " . l($game->host, 'plm/players/pid/' . $game->hid) . "</div>";
   $output .= "<div>$game->num_players Players</div>";
+  $output .= "<div>Host: " . l($game->host, 'plm/players/pid/' . $game->hid) . "</div>";
   $output .= "</div>";
 
   $is_member = user_access('access poker league member content');
