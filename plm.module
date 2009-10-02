@@ -558,7 +558,6 @@ function plm_rankings($plm_season=NULL) {
       'class' => $class);
   }
 
-  $games      = _plm_get_games($plm_season->sid);
   $eoy_total  = _plm_get_eoy_total($plm_season, $games);
   $eoy_est    = _plm_get_eoy_est($plm_season, $eoy_total);
   $tenth_est  = _plm_get_est_cutoff_points($plm_season, $tenth);
@@ -1315,17 +1314,15 @@ function theme_plm_game_results($game) {
     }
     else $style = 'color: #444';
 
-    $lastrow = array(
-      array('data' => 'Pot Remaining', 'header' => 1, 'colspan' => 3),
-      array('data' => $pre . $rem . $post, 'style' => $style),
-    );
     if ($is_admin){
-      $lastrow[] = array('data' => '');
+      $lastrow = array(
+        array('data' => 'Pot Remaining', 'header' => 1, 'colspan' => 3),
+        array('data' => $pre . $rem . $post, 'style' => $style));
+      $rows[] = array('class' => 'subtot', 'data' => $lastrow);
     }
-    $rows[] = array('class' => 'subtot', 'data' => $lastrow);
   }
-
-  $output .= "<div><b>Total Pot:</b> \$$expected_pot_total</div>";
+  
+  //$output .= "<div><b>Total Pot:</b> \$$expected_pot_total</div>";
 //   if ($game->finished) {
 //     $caption = t('Final Results');
 //   }

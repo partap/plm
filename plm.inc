@@ -83,8 +83,10 @@ function _plm_get_eoy_est($plm_season, $eoy_total) {
 }
 
 // Temporarily hardcoded
-function _plm_get_eoy_total($plm_season, $games) {
+function _plm_get_eoy_total($plm_season) {
   //$num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
+  $games = _plm_get_games($plm_season->sid);
+
   $total = 0;
   foreach ($games as $g) {
     $total += $g->eoy_rake;
