@@ -1441,8 +1441,10 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
   $rank = 1;
   $tenth = 0;
   $max_points = 10;
+  $max_entries = 15;
   foreach ($players as $rec) {
     if ($rank == 10) $tenth = $rec->points;
+    if ($rank > $max_entries) break;
     // Include anybody on the bubble...
     if ($rank > 10 && ($rec->points <= $tenth-$max_points || $rec->points <= 0)){
       break;
