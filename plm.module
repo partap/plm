@@ -998,7 +998,7 @@ function theme_plm_upcoming_games($season){
       $output .= '<iframe width="400" height="350" frameborder="0" scrolling="no" marginheight="0" marginwidth="0" src="http://maps.google.com/maps?f=q&amp;source=s_q&amp;hl=en&amp;geocode=&amp;q=3308+La+Veta+Dr+NE,+Albuquerque,+NM+87110&amp;sll=35.119593,-106.584249&amp;sspn=0.014357,0.027337&amp;ie=UTF8&amp;ll=35.12391,-106.581931&amp;spn=0.012285,0.018239&amp;z=15&amp;output=embed"></iframe><br /><small><a href="http://maps.google.com/maps?f=q&amp;source=embed&amp;hl=en&amp;geocode=&amp;q=3308+La+Veta+Dr+NE,+Albuquerque,+NM+87110&amp;sll=35.119593,-106.584249&amp;sspn=0.014357,0.027337&amp;ie=UTF8&amp;ll=35.12391,-106.581931&amp;spn=0.012285,0.018239&amp;z=15" style="color:#0000FF;text-align:left">View Larger Map</a></small>';
     }
     else if ($g->host == "Jack") {
-      $output .= '<a href="http://maps.google.com/maps/ms?daddr=Jack%27s+House+%4035.32015015726405,-106.43297597765923&geocode=&dirflg=&saddr=albuquerque,+nm&f=li&ie=UTF8&msa=0&msid=104926193960871148832.000478207474daf16d7f5&ll=35.318329,-106.434796&spn=0.013026,0.018089&t=h&z=16" target="_blank">Map to 111 Camino de Las Huertas in Placitas</a>';
+      $output .= '<a href="http://maps.google.com/maps/ms?doflg=ptm&amp;ie=UTF8&amp;t=h&amp;msa=0&amp;msid=104926193960871148832.00047820e533b2039ba91&amp;ll=35.256834,-106.509705&amp;spn=0.392487,0.583649&amp;z=10" target="_blank">Map to 111 Camino de Las Huertas in Placitas</a>';
     }
   }
   if ($found_upcoming)
