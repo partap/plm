@@ -106,6 +106,12 @@ function plm_schema() {
         'type' => 'int', 'size' => 'tiny',
         'not null' => TRUE, 'default' => 0
       ),
+      'payid' => array(
+        'description' => 'Payout structure for this game',
+        'type' => 'int',
+        'unsigned' => TRUE,
+        'not null' => FALSE
+      ),
     ),
     'primary key' => array(
       'gid',
@@ -291,13 +297,32 @@ function plm_install() {
   _plm_install_menu();
 }
 
+function plm_update_6000(){
+  drupal_set_message('updating 6000!');
+  $ret = array();
+  return $ret;
+}
+function plm_update_6001(){
+  drupal_set_message('updating 6001!');
+  $ret = array();
+  return $ret;
+}
+
+function plm_update_6002() {
+  $ret = array();
+  db_add_field($ret, 'plm_game', 'payid',  array( 
+      'description' => 'Payout structure for this game',
+      'type' => 'int',
+      'unsigned' => TRUE,
+      'not null' => FALSE));
+  return $ret;
+}
 function plm_uninstall() {
   db_query("DELETE FROM {menu_custom} WHERE menu_name = 'plm'");
   db_query("DELETE FROM {menu_links} WHERE module = 'plm'");
 
   drupal_uninstall_schema('plm');
 }
-
 
 function _plm_install_menu() {
 
