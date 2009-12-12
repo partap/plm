@@ -643,9 +643,12 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#description' => 'Check this to make the game visible to everyone.',
     '#weight' => 1,
   );
+
   if ($oldrec->num_players){
+    $results = _plm_get_results($oldrec->gid);
+
     $form['results'] = array(
-      '#value' => theme_plm_game_results($oldrec),
+      '#value' => theme('plm_game_results', $oldrec, $results),
       '#weight' => 90,
     );
     $form['finished'] = array(

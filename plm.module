@@ -191,7 +191,8 @@ function plm_menu() {
     'description' => 'View the entrants of a poker game',
     'page callback' => 'plm_entrants_list',
     'page arguments' => array(2),
-    'access arguments' => array('access poker league content'),
+    'access callback' => 'plm_entrants_tab_access',
+    'access arguments' => array(2),//array('access poker league content'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
     'file' => 'plm.inc',
@@ -421,7 +422,11 @@ function plm_game_access($op, $node, $account) {
   }
   return FALSE;
 }
-
+function plm_entrants_tab_access($game) {
+  $ret = user_access('access poker league content') && $game->list_entrants;
+  //drupal_set_message('entrants_tab_access(' . $game->title . ') = ' . ($ret?'true':'false'));
+  return $ret;
+}
 function plm_player_edit_access($player) {
   return (($GLOBALS['user']->uid == $player->uid) 
     || user_access('administer poker league'));
@@ -593,17 +598,8 @@ function plm_players_list($max_players_per_page=100) {
 
   $output = '';
   drupal_set_title("All Poker Players");
-  //$output .= '<img src="' . url('sites/all/themes/mytheme/images/pokerdogs4.png') . '"/>';
   $num_players = _plm_get_num_players();
    $num_pages = ceil($num_players/$max_players_per_page);
-  // $output .= '<p>';
-  // $output .= format_plural($num_players, '1 Player', '@count Players');
-  // $output .= ' Total</p>';
-  //  $output .= '<p>';
-  //  $output .= format_plural($num_pages, '1 Page', '@count Pages');
-  // $output .= '</p>';
-  //  $output .= "<p>pager_page_array: $pager_page_array</p>\n";
-  //  $output .= "<p>pager_total: $pager_total</p>\n";
 
   // override theme table's parameters 
   // so points, places and winnings sort in descending order
@@ -748,12 +744,12 @@ function theme_plm_player_details($player) {
     if ($sid && $sid != $r->sid){
       $rowdata = array(
         array('data' => t("$s->title Total"), 'colspan' => 4, 'header' => 1),
-        array('data' => $s_points[$sid]), 
+        array('data' => $s_points[$sid], 'class' => 'numcol'), 
       );
 
       // Hide cash stats!
       if (user_access('access poker league member content')) {
-        $rowdata[] =  array('data' => '$' . $s_cash[$sid]);
+        $rowdata[] =  array('data' => '$' . $s_cash[$sid], 'class' => 'numcol');
       }
 
       $rows[] = array(
@@ -776,11 +772,11 @@ function theme_plm_player_details($player) {
       l($r->title, "plm/games/$r->gid"), 
       $r->host,
       _plm_format_place($r->place),
-      $r->points,
+      array('data' => $r->points, 'class' => 'numcol'),
     );
     // Hide cash stats!
     if (user_access('access poker league member content')) {
-      $rowdata[] =  '$' . $r->cash;
+      $rowdata[] =  array('data' => '$' . $r->cash, 'class' => 'numcol');
     }
     $rows[] = $rowdata;
     
@@ -814,7 +810,7 @@ function theme_plm_player_details($player) {
   // Grand Total
   $rowdata = array(
     array('data' => t("Grand Total"), 'colspan' => 4, 'header' => 1),
-    array('data' => $tot_points),
+    array('data' => $tot_points, 'class' => 'numcol'),
   );
   if (user_access('access poker league member content')) {
     $rowdata[] = array('data' => '$' . $tot_cash);
@@ -1136,15 +1132,9 @@ function plm_game_view($game, $teaser = FALSE, $page = FALSE) {
   $season = _plm_get_season($game->sid);
   $title = "$season->title: $game->title";
   drupal_set_title($title);
-  $output .= theme_plm_game_details($game);
+  //$output .= theme_plm_game_details($game);
+  $output .= theme('plm_game_details',$game);
   if ($teaser) return $output;
-  // if (!$game->list_entrants) return $output;
-  // $entrants = _plm_get_game_entrants($game->gid);
-  // if ($entrants){
-  //   $output .= '<h3>Entrants</h3>';
-  // }
-  // $output .= theme_plm_game_entrants($game, $entrants);
-  
   return $output;
 }
 
@@ -1156,36 +1146,49 @@ function theme_plm_game_details($game, $season=NULL) {
 
   $is_member = user_access('access poker league member content');
 
+  $output .= '<div class="details">';
+  //$output .= '<div class="details container-inline-block">';
   $label = 'Season';
   $title = $s->title;
+  $output .= '<h2>';
   $output .= "$label: " . l(t("@title", array('@title'=>$title)),
                            "plm/seasons/$s->sid");
-  //$output .= theme_plm_game_season($s);
+  $output .= '</h2>';
   $label = 'Game Date';
   $fmt = 'D, M j Y';
-  //$datestr = date($fmt, $game->game_date);
   $datestr = format_date($game->game_date, 'custom', $fmt, 0);
   $output .= "<div class=\"pl_game_date\">$label: $datestr</div>";
-  //$output .= theme_plm_game_date($game);
   $label = 'Host';
   $rec = _plm_get_player($game->hid);
   $name = $rec->name;
   if (!$name) $name = 'None';
   $output .= "<div class=\"game_host\">$label: $name</div>";
-  //$output .= theme_plm_game_host($game);
   if ($game->num_players){
     $label = 'Entrants';
     $num_players = $game->num_players;
     $output .= "<div class=\"num_players\">$label: $num_players</div>";
-    //$output .= theme_plm_game_num_players($game);
     if ($is_member) {
       $output .= "<div>Initial Pot: \$$game->pot_start</div>\n";
       $output .= "<div>Buy-in: \$$game->buyin</div>\n";
       $pot_total = $game->pot_start + $game->buyin * $game->num_players;
       $output .= "<div>Total Pot: \$$pot_total</div>\n";
     }
-    $output .= theme_plm_game_results($game);
-    $output .=  plm_entrants_list($game);
+  }
+  $output .= '</div>';
+  if ($game->finished){
+    $output .= '<div id="game-results" class="details">';
+    $output .= '<h3>Results</h3>';
+    $results = _plm_get_results($game->gid);
+    $output .= theme('plm_game_results',$game, $results);
+    $output .= '</div>';
+  }
+
+  if ($game->list_entrants) {
+    $output .= '<div id="entrant-list" class="details">';
+    $output .= '<h3>Entrants</h3>';
+    $entrants = _plm_get_game_entrants($game->gid);
+    $output .= theme('plm_game_entrants', $game, $entrants);
+    $output .= '</div>';
   }
   return $output;
 }
@@ -1239,32 +1242,31 @@ function _plm_result_row($result) {
   $row = array(
     _plm_format_place($result->place),
     l(t($result->name), 'plm/players/pid/' . $result->pid),
-    $result->points,
+    array('data' => $result->points, 'class' => 'numcol'),
   );
   // Hide cash stats!
   if (user_access('access poker league member content')) {
-    $row[] = '$' . $result->cash;
+    $row[] = array('data' => '$' . $result->cash, 'class' => 'numcol');
   }
   
   return $row;
 }
 
-function theme_plm_game_results($game) {
+function theme_plm_game_results($game, $results) {
   $gid = $game->gid;
   $is_member = user_access('access poker league member content');
   $is_admin = user_access('administer poker league');
 
-  $results = _plm_get_results($gid);
   
   if (!$results && !$is_admin){
     return '<p>No Results Posted</p>';
   }
   $header = array(
-    'Place', 'Player', 'Points', 
+    'Place', 'Player', array('data' =>'Points', 'class' => 'numcol')
   );
   // Hide cash stats!
   if ($is_member) {
-    $header[] = '$$$';
+    $header[] = array('data' => '$$$', 'class' => 'numcol');
   }
   if ($is_admin){
     //$header[] = 'Operation';
@@ -1305,7 +1307,7 @@ function theme_plm_game_results($game) {
 
   // make sure the payouts add up,
   // but if we don't have access to cash stats, skip it
-  if ($is_member) {
+  if ($is_member && $rem != 0) {
     $pre = '$';
     if ($rem > 0) $style = 'color: #006600';
     else if ($rem < 0){
@@ -1332,7 +1334,6 @@ function theme_plm_game_results($game) {
 //   else {
 //     $caption = t('Tentative Results');
 //   }
-  $output .= '<h3>Results</h3>';
   $output .= theme('table', $header, $rows, NULL, $caption);
   return $output;
 }
@@ -1425,7 +1426,16 @@ function plm_theme($existing, $type, $theme, $path) {
     ),
     'plm_nav_menu' => array(
       'arguments' => array('tree' => NULL),
-    )
+    ),
+    'plm_game_details' => array(
+      'arguments' => array('plm_game' => NULL, 'plm_season' => NULL),
+    ),
+    'plm_game_results' => array(
+      'arguments' => array('plm_game' => NULL, 'plm_results' => NULL),
+    ),
+    'plm_game_entrants' => array(
+      'arguments' => array('plm_game' => NULL, 'plm_entrants' => NULL),
+    ),
   );
 }
 
@@ -1498,18 +1508,21 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
     );
     $points = $rec->points;
     // Find new points!
+    $newpoints = '';
     if (isset($results)){
       foreach ($results as $r){
         if ($r->pid != $rec->pid) continue;
-        $points .= " <span class= \"newpoints\"><b>(+$r->points)</b></span>";
+        $newpoints = " <span class= \"newpoints\"><b>(+$r->points)</b></span>";
         $has_newpoints = TRUE;
         break;
       }
     }
     $rowdata[] = array(
       'data' => $points, 
-      'style' => 'white-space:nowrap;'
+      'class' => 'numcol',
     );
+    $rowdata[] = $newpoints;
+
     $num_final = 10;
     if ($rank <= $num_final) 
       $class = 'plm-final';
@@ -1572,7 +1585,7 @@ function theme_plm_results_block($s=NULL, $game=NULL) {
       l($r->name, 'plm/players/pid/' . $r->pid)
     );
     if ($is_member) {
-      $rowdata[] = '$' . $r->cash;
+      $rowdata[] = array('data' => '$' . $r->cash, 'class' => 'numcol');
     }
     $rows[] = $rowdata;
   }
@@ -1593,7 +1606,6 @@ function plm_entrants_list($plm_game) {
   drupal_set_title($title);
 
   $entrants = _plm_get_game_entrants($plm_game->gid);
-  
   $output .= theme_plm_game_entrants($plm_game, $entrants);
   return $output;
 }
@@ -1605,7 +1617,6 @@ function theme_plm_game_entrants($plm_game, $entrants) {
     ($game->finished && !$is_admin)) {
     return '';
   }
-  
   $headers = array(
     '#','Name'
   );
