@@ -612,6 +612,24 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     //   '#value' => '0',
     // );
   }
+  $submit_js = "document.getElementById('plm-select-payset-form').submit();";
+  $options = array(0 => 'Select a Payout');
+  $paysets = _plm_get_paysets();
+  if ($paysets) {
+    foreach ($paysets as $item) {
+      $options[$item->payid] = $item->title;
+    }
+    //$output .= theme('item_list', $list, 'Payouts');
+  }
+  if (!$oldrec->gid && !$oldrec->payid)
+    $oldrec->payid = variable_get('plm_default_payset', 0);
+  $form['payset_sel'] = array(
+    '#type' => 'select',
+    '#title' => 'Payout Structure',
+    '#default_value' => $oldrec->payid,
+    '#options' => $options,
+  );
+
   $form['pot_start'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Initial Pot',
@@ -710,6 +728,8 @@ function plm_game_form_submit($form, &$form_state) {
   $rec->finished      = $form_state['values']['finished'];
   $rec->announced      = $form_state['values']['announced'];
   $rec->list_entrants = $form_state['values']['list_entrants'];
+  $rec->payid = $form_state['values']['payset_sel'];
+  variable_set('plm_default_payset', $rec->payid);
   if ($rec->finished) $rec->announced = 1;
   $host = check_plain(trim($form_state['values']['host_name']));
   if (strlen($host) > 0){ 
@@ -1131,7 +1151,6 @@ function plm_payout_editor($payid=0) {
       
       $submit_js = "document.getElementById('plm-select-payset-form').submit();";
       
-      $output .= "<div>$add_button</div>";
       $addcmd = array();
       foreach($rowdata as $i => $row) {
         $nexti = $i+1;
@@ -1159,7 +1178,7 @@ function plm_payout_editor($payid=0) {
           'data' => $cmd,
           'class' => 'table-cmd');
         $rowdata[$newi][] = $newi;
-        $rowdata[$newi][] = $newi*$payset->buyin + $payset->pot_bonus;
+        //$rowdata[$newi][] = $newi*$payset->buyin + $payset->pot_bonus;
       }
       ksort($rowdata, SORT_NUMERIC);
 
@@ -1171,83 +1190,6 @@ function plm_payout_editor($payid=0) {
   return $output;
 } 
 
-function plm_payout_add_row_form(&$form_state, $payid, $num_players=10, $num_places=0) {
-  $payset = _plm_get_payset($payid);
-  $form['payid'] = array(
-    '#type' => 'hidden',
-    '#value' => $payid,
-  );
-  $form['buyin'] = array(
-    '#type' => 'hidden',
-    '#value' => $payset->buyin,
-  );
-  $form['pot_bonus'] = array(
-    '#type' => 'hidden',
-    '#value' => $payset->pot_bonus,
-  );
-  $form['num_players'] = array(
-    '#type' => 'textfield',
-    '#title' => '# Players',
-    '#default_value' => $num_players
-  );
-  if (!$num_places) $num_places = $num_players/10;
-  $form['num_places'] = array(
-    '#type' => 'textfield',
-    '#title' => '# Places',
-    '#default_value' => round($num_places),
-  );
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => 'Submit'
-  );
-  return $form;
-}
-
-function plm_payout_add_row_form_submit($form, &$form_state) {
-  $payid = $form_state['values']['payid'];
-  $num_players = $form_state['values']['num_players'];
-  $num_places = $form_state['values']['num_places'];
-  $buyin = $form_state['values']['buyin'];
-  $pot_bonus = $form_state['values']['pot_bonus'];
-  $total = $buyin * $num_players + $pot_total;
-  
-  $payouts = array();
-  $remaining = $total;
-  //for ($i=0;$i<$num_places;$i++) {
-  $i = $num_places;
-  while ($i > 0) {
-    $start_amount = $remaining;
-    $stop_amount = floor($start_amount*($i-1)/$i);
-    $rem = $stop_amount % 5;
-    $stop_amount -= $rem;
-    //foreach ($payouts as $place => $amount) {
-    //  drupal_set_message("payrule: " . _plm_format_place($place) . " $place place: $amount");
-    // }
-    //drupal_set_message("start_amount=$start_amount, stop_amount=$stop_amount, rem=$rem");
-    while ($remaining > 0) {
-      for ($j=1;$j<=$i && $remaining >= $stop_amount;$j++) {
-        $amount = 5;
-        if ($remaining % $amount && $remaining <= $stop_amount+$amount) {
-          $amount = $remaining-$stop_amount;
-          //drupal_set_message("Remainder: " . _plm_format_place($j) . " place: amount=$amount");
-        }
-        $payouts[$j] += $amount;
-        $remaining   -= $amount;
-        //error_log("i=$i, j=$j, "._plm_format_place($j)." place $j=$payouts[$j], remaining=$remaining, amount=$amount");
-      }
-      if ($remaining <= $stop_amount) {
-        $i--;
-        break;
-      }
-    }
-  }
-  _plm_delete_payrules($payid, $num_players);
-  foreach ($payouts as $place => $amount) {
-    //drupal_set_message("Adding payrule: $payid, $num_players, $place, $amount");
-    _plm_insert_payrule($payid, $num_players, $place, $amount);
-  }
-  $form_state['redirect'] = "admin/plm/payout/edit/$payid";
-}
 // function plm_payout_new_form(&$form_state) {
 //       return drupal_get_form('plm_edit_payset_form');
 // }
@@ -1297,18 +1239,17 @@ function plm_select_payset_form_submit($form, &$form_state) {
 
 function plm_edit_payset_form(&$form_state, $oldrec=NULL) {
   //drupal_set_message('plm_edit_payset_form()');
-  //drupal_set_message('oldrec=' . print_r($oldrec, 1));
+  
    if (isset($oldrec)){
-  //   $form['oldrec'] = array(
-  //     '#type' => 'hidden',
-  //     '#value' => $oldrec,
-  //   );
+//      $form_state['storage']['oldrec'] = array(
+//        '#value' => $oldrec,
+//      );
      $form['payid'] = array(
        '#type' => 'hidden',
        '#value' => $oldrec->payid,
      );
    }
-  
+ 
   $form['title'] = array(
      '#type' => 'textfield',
      '#title' => t('Title'),
@@ -1342,25 +1283,72 @@ function plm_edit_payset_form(&$form_state, $oldrec=NULL) {
     '#type' => 'submit',
     '#value' => 'Save Structure',
   );
+  $form['gen_rules'] = array(
+    '#type' => 'submit',
+    '#value' => 'Generate Payouts',
+  );
+
+  if ($oldrec->payid){
+    $form['delete'] = array(
+      '#value' => l('Delete Structure', "admin/plm/payout/delete/$oldrec->payid"),
+      '#weight' => 1002,
+    );
+  }
+
   return $form;
 }
 function plm_edit_payset_form_submit($form, &$form_state) {
   //drupal_set_message('<pre>form:' . print_r($form, TRUE) . '</pre>');
   //drupal_set_message('<pre>form_state:' . print_r($form_state, TRUE) . '</pre>');
+  //drupal_set_message('<pre>form_state=' . print_r($form_state, 1) . '</pre>');
   $values = $form_state['values'];
-  //$oldrec = $values['oldrec'];
-  $isnew = !$oldrec;
+  //$oldrec = $form_state['storage']['oldrec'];
+  //$isnew = !$oldrec;
   $payid = $values['payid'];
+  $isnew = !isset($payid);
   //$rec->payid = $oldrec->payid;
   $rec->payid = $payid;
   $rec->title = $values['title'];
   $rec->buyin = $values['buyin'];
   $rec->pot_bonus = $values['pot_bonus'];
-  if ($isnew)
+  if ($isnew){
     $rec->payid = _plm_insert_payset($rec);
+    $gen_rules = true;
+  }
   else
     _plm_update_payset($rec);
+  if ($form_state['values']['op'] == 'Generate Payouts') $gen_rules = true;
+
+  if ($gen_rules){
+    for ($num_players=10;$num_players<=36;$num_players++) {
+      if ($num_players < 20) $num_places = 4;
+      else $num_places = 5;
+      $payrules = _plm_generate_payrules($num_players, $num_places, $rec->buyin, $rec->pot_bonus);
+      _plm_delete_payrules($payid, $num_players);
+      foreach ($payrules as $place => $amount) {
+        //drupal_set_message("Adding payrule: $payid, $num_players, $place, $amount");
+        _plm_insert_payrule($rec->payid, $num_players, $place, $amount);
+      }
+    }
+  }
   $form_state['redirect'] = "admin/plm/payout/edit/$rec->payid";
+  //$form_state['redirect'] = "admin/plm/payout/edit/$payid";
+}
+
+function plm_payout_confirm_delete(&$form_data, $payid) {
+  $form['payid'] = array('#type' => 'hidden', '#value' => $payid);
+  return confirm_form(
+    $form,
+    "Are you sure you want to delete this payout structure?",
+    "admin/plm/payout/edit/$payid",
+    t('This action cannot be undone.'),
+    t('Delete'), t('Cancel'));
+}
+
+function plm_payout_confirm_delete_submit($form, &$form_state) {
+  $payid       = $form_state['values']['payid'];
+  //drupal_set_message("payid: $payid, num_players: $num_players");
+  _plm_delete_paysetrules($payid, $num_players);
 }
 
 function plm_payout_delete_row(&$form_data, $payid, $num_players) {
@@ -1458,7 +1446,7 @@ function plm_payrule_form_submit($form, &$form_state) {
   $num_players = $form_state['values']['num_players'];
   $place       = $form_state['values']['place'];
   $amount      = $form_state['values']['amount'];
-  drupal_set_message("plm_payrule_form_submit($payid, $num_players, $place, $amount)");
+  //drupal_set_message("plm_payrule_form_submit($payid, $num_players, $place, $amount)");
   $rec = _plm_get_payrule($payid, $num_players, $place);
   if ($rec){ 
     //drupal_set_message('updating');
@@ -1490,6 +1478,88 @@ function plm_add_payrule_form(&$form_data, $payset, $num_players, $place, $amoun
   );  
 }
 
+function plm_payout_add_row_form(&$form_state, $payid, $num_players=10, $num_places=0) {
+  $payset = _plm_get_payset($payid);
+  $form['payid'] = array(
+    '#type' => 'hidden',
+    '#value' => $payid,
+  );
+  $form['buyin'] = array(
+    '#type' => 'hidden',
+    '#value' => $payset->buyin,
+  );
+  $form['pot_bonus'] = array(
+    '#type' => 'hidden',
+    '#value' => $payset->pot_bonus,
+  );
+  $form['num_players'] = array(
+    '#type' => 'textfield',
+    '#title' => '# Players',
+    '#default_value' => $num_players
+  );
+  if (!$num_places) $num_places = $num_players/10;
+  $form['num_places'] = array(
+    '#type' => 'textfield',
+    '#title' => '# Places',
+    '#default_value' => round($num_places),
+  );
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit'
+  );
+  return $form;
+}
+
+function plm_payout_add_row_form_submit($form, &$form_state) {
+  $payid = $form_state['values']['payid'];
+  $num_players = $form_state['values']['num_players'];
+  $num_places = $form_state['values']['num_places'];
+  $buyin = $form_state['values']['buyin'];
+  $pot_bonus = $form_state['values']['pot_bonus'];
+  
+  $payouts = _plm_generate_payrules($num_players, $num_places, $buyin, $pot_bonus);
+  _plm_delete_payrules($payid, $num_players);
+  foreach ($payouts as $place => $amount) {
+    //drupal_set_message("Adding payrule: $payid, $num_players, $place, $amount");
+    _plm_insert_payrule($payid, $num_players, $place, $amount);
+  }
+  $form_state['redirect'] = "admin/plm/payout/edit/$payid";
+}
+
+function _plm_generate_payrules($num_players, $num_places, $buyin, $pot_bonus) {
+  $payouts = array();
+  $total = $buyin * $num_players + $pot_total;
+  $remaining = $total;
+  //for ($i=0;$i<$num_places;$i++) {
+  $i = $num_places;
+  while ($i > 0) {
+    $start_amount = $remaining;
+    $stop_amount = floor($start_amount*($i-1)/$i);
+    $rem = $stop_amount % 5;
+    $stop_amount -= $rem;
+    //foreach ($payouts as $place => $amount) {
+    //  drupal_set_message("payrule: " . _plm_format_place($place) . " $place place: $amount");
+    // }
+    //drupal_set_message("start_amount=$start_amount, stop_amount=$stop_amount, rem=$rem");
+    while ($remaining > 0) {
+      for ($j=1;$j<=$i && $remaining > $stop_amount;$j++) {
+        $amount = 5;
+        if ($remaining % $amount && $remaining <= $stop_amount+$amount) {
+          $amount = $remaining-$stop_amount;
+          //drupal_set_message("Remainder: " . _plm_format_place($j) . " place: amount=$amount");
+        }
+        $payouts[$j] += $amount;
+        $remaining   -= $amount;
+        //error_log("i=$i, j=$j, "._plm_format_place($j)." place $j=$payouts[$j], remaining=$remaining, amount=$amount");
+      }
+      if ($remaining <= $stop_amount) {
+        $i--;
+        break;
+      }
+    }
+  }
+  return $payouts;
+}
 function plm_add_payset_row($payid) {
   $payset = _plm_get_payset($payid);
   $payrules = _plm_get_payrules($payid);

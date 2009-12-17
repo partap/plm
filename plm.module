@@ -412,7 +412,7 @@ function plm_menu() {
   $items['admin/plm/payout/delete/%plm_payset'] = array(
     'title' => t('Payout'),
     'description' => 'Delete a payout structure',
-    'page callback' => 'plm_payout_delete',
+    'page callback' => 'plm_payout_confirm_delete',
     'page arguments' => array(4),
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,

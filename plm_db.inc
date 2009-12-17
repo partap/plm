@@ -236,11 +236,11 @@ function _plm_get_game_by_title($title, $sid) {
 function _plm_insert_game($rec) {
   $res = db_query("INSERT INTO {plm_game} 
                    (title, sid, game_date, hid, num_players, pot_start, buyin, 
-                    announced, finished) 
-                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d)", 
+                    announced, finished, payid) 
+                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
          $rec->title, $rec->sid,
          $rec->game_date, $rec->hid, $rec->num_players, 
-         $rec->pot_start, $rec->buyin, $rec->announced, $rec->finished);
+         $rec->pot_start, $rec->buyin, $rec->announced, $rec->finished, $rec->payid);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_game}'), 'gid');
 }
@@ -248,11 +248,13 @@ function _plm_update_game($rec) {
   return db_query("UPDATE {plm_game} 
                    SET title='%s', game_date=%d, 
                    sid=%d, hid=%d, num_players=%d,
-                   pot_start=%d, buyin=%d, announced=%d, finished=%d, list_entrants=%d
-                   WHERE gid = %d", 
+                   pot_start=%d, buyin=%d, announced=%d, finished=%d, list_entrants=%d,
+                   payid=%d
+                   WHERE gid=%d", 
     $rec->title, $rec->game_date, 
     $rec->sid, $rec->hid, $rec->num_players,
     $rec->pot_start, $rec->buyin, $rec->announced, $rec->finished, $rec->list_entrants,
+    $rec->payid,
     $rec->gid);
 }
 
@@ -414,6 +416,13 @@ function _plm_update_payset($rec) {
   $res = db_query($sql, $rec->title, $rec->buyin, $rec->pot_bonus, $rec->payid);
   return $res;
 }
+function _plm_delete_payset($payid) {
+  _plm_delete_payrules($payid);
+  $sql = "DELETE FROM {plm_payset} WHERE payid=%d";
+  $result = db_query($sql, $payid);
+  return db_fetch_object($result);
+}
+
 function _plm_get_payrules($payid, $num_players=NULL) {
   $where_phrase = "WHERE payid=%d";
   if ($num_players != NULL)

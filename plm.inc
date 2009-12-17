@@ -46,6 +46,10 @@ function _plm_rules_default_points($game, $place) {
 
 function _plm_rules_default_payout($game, $place) {
   $num_players = $game->num_players;
+  if ($game->payid){
+    $payrule = _plm_get_payrule($game->payid, $num_players, $place);
+    if ($payrule) return $payrule->amount;
+  }
   $buyin = $game->buyin;
   $pot_total  = $game->pot_start + $num_players*$buyin;
   if ($pot_total <= 0) return 0;
