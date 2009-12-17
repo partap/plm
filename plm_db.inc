@@ -387,3 +387,73 @@ function _plm_delete_entrant($entid) {
   $sql = "DELETE FROM {plm_entrant} WHERE entid=%d";
   return db_query($sql, $entid);
 }
+
+function _plm_get_paysets() {
+  $sql = "SELECT * FROM {plm_payset} ORDER BY payid"; 
+  $result = db_query($sql);
+  while ($row = db_fetch_object($result)){
+    $list[] = $row;
+  }
+  return $list; 
+}
+function _plm_get_payset($payid) {
+  $sql = "SELECT * FROM {plm_payset} WHERE payid=%d"; 
+  $result = db_query($sql, $payid);
+  return db_fetch_object($result);
+}
+function _plm_insert_payset($rec) {
+  $sql = "INSERT INTO {plm_payset} (title, buyin, pot_bonus)
+            VALUES ('%s', %d, %d)";
+  $result = db_query($sql, $rec->title, $rec->buyin, $rec->pot_bonus);
+  if (!$result) return $result;
+  return db_last_insert_id(db_prefix_tables('{plm_payset}'), 'payid');  
+  
+}
+function _plm_update_payset($rec) {
+  $sql = "UPDATE {plm_payset} SET title='%s', buyin=%d, pot_bonus=%d WHERE payid=%d";
+  $res = db_query($sql, $rec->title, $rec->buyin, $rec->pot_bonus, $rec->payid);
+  return $res;
+}
+function _plm_get_payrules($payid, $num_players=NULL) {
+  $where_phrase = "WHERE payid=%d";
+  if ($num_players != NULL)
+    $where_phrase .= " AND num_players=%d";
+  $sql = "SELECT * from {plm_payrule} $where_phrase order by num_players, place";
+  $result = db_query($sql, $payid, $num_players);
+  while ($row = db_fetch_object($result)){
+    $list[] = $row;
+  }
+  return $list; 
+}
+
+function _plm_get_payrule($payid, $num_players, $place) {
+  $sql = "SELECT * from {plm_payrule} WHERE payid=%d AND num_players=%d and place=%d";
+  $result = db_query($sql, $payid, $num_players, $place);
+  return db_fetch_object($result);
+}
+
+function _plm_delete_payrule($payid, $num_players, $place) {
+  $sql = "DELETE FROM {plm_payrule} WHERE payid=%d AND num_players=%d and place=%d";
+  $result = db_query($sql, $payid, $num_players, $place);
+  return db_fetch_object($result);
+}
+function _plm_delete_payrules($payid, $num_players) {
+  $sql = "DELETE FROM {plm_payrule} WHERE payid=%d AND num_players=%d";
+  $result = db_query($sql, $payid, $num_players);
+  return db_fetch_object($result);
+}
+
+function _plm_insert_payrule($payid, $num_players, $place, $amount) {
+  $oldrec = _plm_get_payrule($payid, $num_players, $place);
+  if ($oldrec) return _plm_update_payrule($payid, $num_players, $place, $amount);
+  $sql = "INSERT INTO {plm_payrule} (payid, num_players, place, amount) VALUES (%d, %d, %d, %d)";
+  $result = db_query($sql, $payid, $num_players, $place, $amount);
+  return $result;
+}
+
+function _plm_update_payrule($payid, $num_players, $place, $amount) {
+  $sql = "UPDATE {plm_payrule} SET amount=%d 
+            WHERE payid=%d AND num_players=%d AND place=%d";
+  $result = db_query($sql, $amount, $payid, $num_players, $place );
+  return $result;
+}

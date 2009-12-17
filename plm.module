@@ -376,11 +376,104 @@ function plm_menu() {
     'type' => MENU_NORMAL_ITEM,
     'file' => 'plm_file.inc',
   );
+  $items['admin/plm/payout'] = array(
+    'title' => t('Payout Editor'),
+    'description' => 'View or edit payout structures',
+    'page callback' => 'plm_payout_editor',
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'plm_admin.inc',
+  );
+  $items['admin/plm/payout/list'] = array(
+    'title' => t('List Payouts'),
+    'type' => MENU_DEFAULT_LOCAL_TASK,
+    'file' => 'plm_admin.inc',
+  );
 
+  $items['admin/plm/payout/new'] = array(
+    'title' => t('New Payout Structure'),
+    'description' => 'Create a new payout atructure',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_edit_payset_form'),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_LOCAL_TASK,
+    'file' => 'plm_admin.inc',
+  );
+  $items['admin/plm/payout/edit'] = array(
+    'title' => t('Payout'),
+    'description' => 'Edit a payout structure',
+    'page callback' => 'plm_payout_editor',
+    //'page arguments' => array(4),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'plm_admin.inc',
+  );
+
+  $items['admin/plm/payout/delete/%plm_payset'] = array(
+    'title' => t('Payout'),
+    'description' => 'Delete a payout structure',
+    'page callback' => 'plm_payout_delete',
+    'page arguments' => array(4),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_CALLBACK,
+    'file' => 'plm_admin.inc',
+  );
+
+  $items['admin/plm/payout/delrow/%/%'] = array(
+    'title' => t('Payout'),
+    'description' => 'Delete a row in a payout structure',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_payout_delete_row',4,5),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_CALLBACK,
+    'file' => 'plm_admin.inc',
+  );
+
+  $items['admin/plm/payout/addrow/%'] = array(
+    'title' => t('Payout'),
+    'description' => 'Add a row to a payout structure',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_payout_add_row_form',4),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_CALLBACK,
+    'file' => 'plm_admin.inc',
+  );
+
+  $items['admin/plm/payrule/%/%/%/edit'] = array(
+    'title'         => t('Edit Payrule'),
+    'description'   => 'Edit a single payout rule',
+    //'load arguments' => array(4, 5),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_payrule_form', 3, 4, 5),
+    'access arguments' => array('administer poker league'),
+    'file' => 'plm_admin.inc',
+    'type' => MENU_CALLBACK,
+    'menu_name' => 'plm',
+  );
+  
+  $items['admin/plm/payrule/%/%/%/delete'] = array(
+    'title'         => t('Delete Payrule'),
+    'description'   => 'Delete a single payout rule',
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_payrule_delete_form', 3, 4, 5),
+    'access arguments' => array('administer poker league'),
+    'file' => 'plm_admin.inc',
+    'type' => MENU_CALLBACK,
+    'menu_name' => 'plm',
+
+  );
   return $items;
   
 }
 
+function plm_payrule_load($payid, $num_players, $place) {
+  //drupal_set_message("plm_payrule_load($payid, $num_players, $place)");
+  return _plm_get_payrule($payid, $num_players, $place);
+}
+function plm_payset_load($payid) {
+  drupal_set_message("plm_payset_load($payid)");
+  return _plm_get_payset($payid);
+}
 function plm_enable() {
 
 }
@@ -979,12 +1072,12 @@ function theme_plm_upcoming_games($season){
        $weeks = ceil($days/7);
        $daystr = "In $weeks Weeks";
      }
-    if (!$found_upcoming){
-      $output .= '<div class="upcoming">';
-      $output .= "<h2>Upcoming:</h2>";
-      $found_upcoming = TRUE;
-    }
-    $output .= "<hr/>\n";
+    // if (!$found_upcoming){
+    //   $output .= '<div class="upcoming">';
+    //   $output .= "<h2>Upcoming:</h2>";
+    //   $found_upcoming = TRUE;
+    // }
+    //$output .= "<hr/>\n";
     if ($daystr)
       $output .= "<h3>$daystr:</h3> ";
     $output .= "<p><b>$g->title</b> will be"
@@ -1631,7 +1724,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
     $num = 0;
     foreach ($entrants as $ent) {
       $rowdata = array(
-        ++$num,
+        array('data' => ++$num, 'class' => 'numcol'),
         l($ent->name, "plm/players/pid/$ent->pid"),
       );
       if (!$plm_game->finished && $is_admin) {
