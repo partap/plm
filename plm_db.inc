@@ -446,8 +446,9 @@ function _plm_delete_payrule($payid, $num_players, $place) {
   $result = db_query($sql, $payid, $num_players, $place);
   return db_fetch_object($result);
 }
-function _plm_delete_payrules($payid, $num_players) {
-  $sql = "DELETE FROM {plm_payrule} WHERE payid=%d AND num_players=%d";
+function _plm_delete_payrules($payid, $num_players=0) {
+  $sql = "DELETE FROM {plm_payrule} WHERE payid=%d";
+  if ($num_players) $sql .= " AND num_players=%d";
   $result = db_query($sql, $payid, $num_players);
   return db_fetch_object($result);
 }

@@ -301,7 +301,6 @@ function plm_season_delete($sid) {
 
 function plm_player_form(&$form_state, $player=NULL) {
   //global $user;
-  //drupal_set_message('<pre>' . print_r($user, TRUE) . '</pre>');
   if ($player){
     drupal_set_title(t('Edit Player'));
     $form['_player'] = array('#type' => 'value', '#value' => $player);
@@ -1335,7 +1334,9 @@ function plm_edit_payset_form_submit($form, &$form_state) {
   //$form_state['redirect'] = "admin/plm/payout/edit/$payid";
 }
 
-function plm_payout_confirm_delete(&$form_data, $payid) {
+function plm_payout_confirm_delete(&$form_data,$payid) {
+//  drupal_set_message('plm_payout_confirm_delete($payid)<pre>' . print_r($payid, TRUE) . '</pre>');
+
   $form['payid'] = array('#type' => 'hidden', '#value' => $payid);
   return confirm_form(
     $form,
@@ -1348,7 +1349,8 @@ function plm_payout_confirm_delete(&$form_data, $payid) {
 function plm_payout_confirm_delete_submit($form, &$form_state) {
   $payid       = $form_state['values']['payid'];
   //drupal_set_message("payid: $payid, num_players: $num_players");
-  _plm_delete_paysetrules($payid, $num_players);
+  _plm_delete_payset($payid);
+  $form_state['redirect'] = "admin/plm/payout/list";
 }
 
 function plm_payout_delete_row(&$form_data, $payid, $num_players) {
