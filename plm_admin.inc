@@ -1628,4 +1628,5 @@ function plm_ajax_payout_save() {
   }
 
   echo $amount;
+  die();
 }
