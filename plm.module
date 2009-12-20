@@ -460,7 +460,21 @@ function plm_menu() {
     'file' => 'plm_admin.inc',
     'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
+  );
 
+  $items['admin/plm/ajax/payout/load'] = array(
+    'title' => 'update payout',
+    'page callback' => 'plm_ajax_payout_load',
+    'access arguments' => array('administer poker league'),
+    'file' => 'plm_admin.inc',
+    'type' => MENU_CALLBACK,
+  );
+  $items['admin/plm/ajax/payout/save'] = array(
+    'title' => 'update payout',
+    'page callback' => 'plm_ajax_payout_save',
+    'access arguments' => array('administer poker league'),
+    'file' => 'plm_admin.inc',
+    'type' => MENU_CALLBACK,
   );
   return $items;
   
