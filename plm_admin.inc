@@ -1084,8 +1084,11 @@ function plm_payout_editor($payid=0) {
       $path = drupal_get_path('module', 'plm');
       //drupal_set_message('path: ' . $path);
       drupal_add_js("$path/js/jquery.jeditable.js");
+      drupal_add_js(array('plm' => array(
+            'modulePath' => $path,
+          )), 'setting');
       drupal_add_js("$path/js/plm.js");
-      $output .= '<div class="edit" id="div_1">Dolor</div>';
+      //$output .= '<div class="edit" id="div_1">Dolor</div>';
       $dstr = '';
       $max_places = 0;
       $headers = array('Plyrs', 'Pot');
@@ -1102,9 +1105,10 @@ function plm_payout_editor($payid=0) {
         );
         $rowdata[$row_index][1] = array(
           'data' =>$rule->num_players * $payset->buyin + $payset->pot_bonus,
+          'class' => 'rowtotal',
           'header' => true,
         );
-        $rowdata[$row_index][$place_index] = array('data' => $rule->amount);
+        $rowdata[$row_index][$place_index] = array('data' => $rule->amount, 'class' => 'rowval');
         $headers[$place_index] = _plm_format_place($rule->place);
         if ($rule->place > $max_places) $max_places = $rule->place;        
       }
@@ -1117,25 +1121,23 @@ function plm_payout_editor($payid=0) {
         $total = $payset->pot_bonus;
         for ($i=$num_headers; $i <= $max_places+$num_headers; $i++) {
           $place=$i-$num_headers+1;
-          if (!$row[$i]['data']) $rowdata[$rownum][$i] = array('data' => '---') ;
+          if (!$row[$i]['data']) $rowdata[$rownum][$i] = array('data' => '---', 'class' => 'rowval') ;
           else $total += $row[$i]['data'];
           $rowdata[$rownum][$i] = array(
-            //'data' => l($rowdata[$rownum][$i],
-            //        "admin/plm/payrule/$payset->payid/$num_players/$place/edit",
-            //        array('query' => drupal_get_destination())),
             'data' => $rowdata[$rownum][$i]['data'],
-            'class' => 'edit', 
+            'class' => $row[$i]['class'] . ' edit', 
             'id' => "payout-$payset->payid-$num_players-$place",
           );
           //'attributes' => array('class' => 'popups-form')));
 
         }
         if ($total == $row[1]['data']) {
-          $rowdata[$rownum][$max_places+$num_headers+1] = '';
+          $rowdata[$rownum][$max_places+$num_headers+1] = array('class' => 'rowchecksum');
         }
         else{
-          $rowdata[$rownum][$max_places+$num_headers+1] = array( 'data' => $row[1]['data']-$total);
-          $rowdata[$rownum][$max_places+$num_headers+1]['class'] = 'error';
+          $rowdata[$rownum][$max_places+$num_headers+1] = array( 'data' => $row[1]['data']-$total,
+                                                          'class' => 'rowchecksum');
+          //$rowdata[$rownum][$max_places+$num_headers+1]['class'] = 'error';
         }
         ksort($rowdata[$rownum], SORT_NUMERIC);
       }
@@ -1158,7 +1160,6 @@ function plm_payout_editor($payid=0) {
       //$headers[$max_places+$num_headers+1] = '';        
       //$headers[$max_places+$num_headers+1] = t('Total');        
       ksort($headers, SORT_NUMERIC);
-      $attr = array('class' => 'numgrid');
 
       $curr_uri = check_plain(request_uri());
       //$curr_uri = $_GET['q'];
@@ -1194,7 +1195,10 @@ function plm_payout_editor($payid=0) {
         //$rowdata[$newi][] = $newi*$payset->buyin + $payset->pot_bonus;
       }
       ksort($rowdata, SORT_NUMERIC);
-
+      $attr = array(
+        'class' => 'numgrid',
+        'id' => 'payouts'
+      );
       //drupal_set_message('<pre>' . print_r($rowdata, TRUE) . '</pre>');
       $output .= theme('table', $headers, $rowdata, $attr, $caption);
     }
@@ -1603,7 +1607,8 @@ function plm_ajax_payout_load() {
   list($str, $payid, $num_players, $place) = split('-', $id);
   error_log("plm_ajax_payout_load($id): payid=$payid, num_players=$num_players, place=$place");
 
-  drupal_set_header('Content-Type: text/plain; charset=utf-8');
+  //drupal_set_header('Content-Type: text/plain; charset=utf-8');
+  drupal_set_header('Content-Type: application/json; charset=utf-8');
   $payrule = _plm_get_payrule($payid, $num_players, $place);
   $amount = $payrule->amount;
   echo "$amount";
@@ -1616,17 +1621,15 @@ function plm_ajax_payout_save() {
   $payrule = _plm_get_payrule($payid, $num_players, $place);
   error_log("plm_ajax_payout_load($id): payid=$payid, num_players=$num_players, place=$place");
   //drupal_set_header('Content-Type: text/plain; charset=utf-8');
-  if (is_numeric($value)) {
+  if (is_numeric($value) && $value > 0) {
     _plm_insert_payrule($payid, $num_players, $place, $value);
     $amount = $value;
   }
-  else if (isset($payrule)){
-    $amount = $payrule->amount;
-  }
   else {
+    if (isset($payrule->amount))
+      _plm_delete_payrule($payid, $num_players, $place);
     $amount = '---';
   }
-
   echo $amount;
   die();
 }
