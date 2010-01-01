@@ -189,8 +189,8 @@ function plm_menu() {
   $items['plm/games/%plm_game/entrants'] = array(
     'title' => t('Entrants'),
     'description' => 'View the entrants of a poker game',
-    'page callback' => 'plm_entrants_list',
-    'page arguments' => array(2),
+    'page callback' => 'drupal_get_form',
+    'page arguments' => array('plm_entrants_form', 2),
     'access callback' => 'plm_entrants_tab_access',
     'access arguments' => array(2),//array('access poker league content'),
     'type' => MENU_LOCAL_TASK,
@@ -225,9 +225,21 @@ function plm_menu() {
     'menu_name' => 'plm',
     'file' => 'plm_admin.inc',
   );
+
   $items['plm/entrants/%plm_entrant/delete'] = array(
     'title' => t('Delete'),
-    'description' => 'Delete an game entrant',
+    'description' => 'Delete a game entrant now',
+    'page callback' => 'plm_entrant_really_delete',
+    'page arguments' => array(2),
+    'access arguments' => array('administer poker league'),
+    'type' => MENU_CALLBACK,
+    'menu_name' => 'plm',
+    'file' => 'plm_admin.inc',
+  );
+
+  $items['plm/entrants/%plm_entrant/confirm_delete'] = array(
+    'title' => t('Delete'),
+    'description' => 'Delete a game entrant?',
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_entrant_confirm_delete', 2),
     'access arguments' => array('administer poker league'),
@@ -1543,6 +1555,9 @@ function plm_theme($existing, $type, $theme, $path) {
     'plm_game_entrants' => array(
       'arguments' => array('plm_game' => NULL, 'plm_entrants' => NULL),
     ),
+    'plm_entrants_form' => array(
+      'arguments' => array('form' => NULL),
+      'file' => 'plm_admin.inc'),
   );
 }
 
@@ -1713,64 +1728,94 @@ function plm_entrants_list($plm_game) {
   drupal_set_title($title);
 
   $entrants = _plm_get_game_entrants($plm_game->gid);
-  $output .= theme_plm_game_entrants($plm_game, $entrants);
+  $output .= theme('plm_game_entrants', $plm_game, $entrants);
   return $output;
 }
 
 function theme_plm_game_entrants($plm_game, $entrants) {
+  //drupal_set_message('theme_drupal_plm_game_entrants()');
   $is_admin = user_access('administer poker league');
   
   if (!$entrants && 
     ($game->finished && !$is_admin)) {
     return '';
   }
-  $headers = array(
-    '#','Name'
-  );
-  
+  $headers = array();
   if (!$plm_game->finished && $is_admin) {
     $headers[] = '';
-    drupal_add_js('misc/autocomplete.js');
-    popups_add_popups();
+    //drupal_add_js('misc/autocomplete.js');
+    //popups_add_popups();
   }
+  $headers[] = array('data' => '#', 'class' => 'numcol');
+  $headers[] = array('data' => 'Name');
+
+  
   
   if ($entrants && count($entrants)) {
     $num = 0;
+    $imgpath = drupal_get_path('module', 'plm') . '/img';
+    $delimg = "/$imgpath/del_button.png";
     foreach ($entrants as $ent) {
-      $rowdata = array(
-        array('data' => ++$num, 'class' => 'numcol'),
-        l($ent->name, "plm/players/pid/$ent->pid"),
-      );
+      $rowdata = array();
       if (!$plm_game->finished && $is_admin) {
-        $rowdata[] = 
-          l('edit', "plm/entrants/$ent->entid/edit",
-            array('query' => drupal_get_destination(),
-              'attributes' => array('class' => 'popups-form')))
-          . ' ' . 
-          l('delete', 
-            "plm/entrants/$ent->entid/delete",
-            array('query' => drupal_get_destination(),
-              'attributes' => array('class' => 'popups-form')));
+        $rowdata[] = array(
+//           l('edit', "plm/entrants/$ent->entid/edit",
+//             array('query' => drupal_get_destination(),
+//               'attributes' => array('class' => 'popups-form')))
+//           . ' ' . 
+//           l('delete', 
+//             "plm/entrants/$ent->entid/delete",
+//             array('query' => drupal_get_destination(),
+//               'attributes' => array('class' => 'popups-form')));
+          'data' => '<a href="/plm/entrants/' . $ent->entid. '/delete"><img src="' . $delimg . '"/></a>',
+          'class' => 'narrow-mid-col');
       }
+      $rowdata[] = 
+        array('data' => ++$num, 'class' => 'numcol');
+      $rowdata[] = 
+        l($ent->name, "plm/players/pid/$ent->pid");
       $rows[] = $rowdata;
     }
   }
   
+  //if (!$plm_game->finished && $is_admin && $rows) {
+  //  $output .= '<div class="hpane">';
+  //}
+  //$hpane_table = array();
   if (!$plm_game->finished && $is_admin) {
-    $addlink = '<div>';
-    $addlink .= l('Add Entrant', "plm/games/$plm_game->gid/entrants/add",
-               array('query' => drupal_get_destination(),
-                 'attributes' => array('class' => 'popups-form')));
-    $addlink .= '</div>';
+//     $addlink = '<div>';
+//     $addlink .= l('Add Entrant', "plm/games/$plm_game->gid/entrants/add",
+//                array('query' => drupal_get_destination(),
+//                  'attributes' => array('class' => 'popups-form')));
+//     $addlink .= '</div>';
     //$output .= $addlink;
-    $output .= drupal_get_form('plm_entrant_form', NULL, $plm_game);
+    //$output .= drupal_get_form('plm_entrants_form', $plm_game);
+    //$hrow[] = array(
+    //  'data' => drupal_get_form('plm_entrants_form', $plm_game),
+    //  'class' => 'top-aligned'
+    //);
   }
   if ($rows){
-    $output .= theme('table', $headers, $rows, $attr);
+    $attr = array('id' => 'plm-entrants-list');
+    $output .= '<div id="table-wrapper">';
+    $caption = 'Registered Players:';
+    $output .= theme('table', $headers, $rows, $attr, $caption);
+    //$attr2 = array( 'class' => 'top-aligned');
+    //$hrow[] =  array(
+    //  'data' => theme('table', $headers, $rows, $attr),
+    //  'class' => 'top-aligned'
+    //);
+    $output .= '</div>';
     //if (!$plm_game->finished && $is_admin) {
     //  $output .= $addlink;
     //}
+    //$hpane_table[] = $hrow;
   }
+  //$attr2 = array('class' => 'layout-table');
+  //$output .= theme('table', NULL, $hpane_table, $attr2);
+  //if (!$plm_game->finished && $is_admin && $rows) {
+  //  $output .= '</div>';
+  // }
   return $output;
   
 }

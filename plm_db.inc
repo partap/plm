@@ -71,6 +71,30 @@ function _plm_get_rankings($sid, $limit = NULL) {
   }
   return $list;
 }
+function _plm_get_active_player_options($game) {
+  $gid = $game->gid;
+  $game_date = $game->game_date;
+  //$now = time();
+  $sql = "SELECT p.pid AS pid, p.name AS name, Max(g.game_date) AS last
+          FROM {plm_player} p
+          LEFT JOIN plm_entrant e ON p.pid=e.pid 
+          LEFT JOIN plm_game g ON (e.gid=g.gid AND g.game_date < $game_date)
+          WHERE p.pid NOT IN (SELECT x.pid FROM plm_entrant x WHERE x.gid=$gid) 
+          GROUP BY p.pid,p.name
+          ORDER BY name";
+  //ORDER BY last DESC NULLS LAST,name";
+  $result = db_query($sql, $gid);
+  $list = array();
+  while ($row = db_fetch_object($result)) {
+    $weeks = (int) (($game_date - $row->last) / (60 * 60 * 24 * 7));
+    $label = "$row->name";
+    if ($row->last && $weeks > 0) 
+      $label .= " ($weeks weeks)";
+    $list[$row->pid] = $label;
+  }
+  return $list;
+}
+
 
 function _plm_insert_player($player) {
   $sql = "INSERT INTO {plm_player} (name, uid) VALUES ('%s', %d)";
