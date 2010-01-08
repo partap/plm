@@ -1227,7 +1227,7 @@ function theme_plm_entrants_form($form) {
 
   if ($rows){
     $attr = array('id' => 'plm-entrants-list');
-    $output .= '<div id="table-wrapper">';
+    $output .= '<div id="tbl-wrapper">';
     $caption = 'Registered Players:';
     $output .= theme('table', $headers, $rows, $attr, $caption);
     $output .= '</div>';
