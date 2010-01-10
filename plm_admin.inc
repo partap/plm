@@ -1060,28 +1060,6 @@ function plm_entrants_form(&$form_state, $game=NULL) {
      i[0].focus();});'; 
   drupal_add_js($jquery_snippet, 'inline'); 
 
-//   $form['available'] = array(
-//     '#type' => 'fieldset',
-//     '#attributes' => array(
-//       'class' => 'form-column'
-//     )    
-//   );
-
-//   $options = _plm_get_active_players_options($game);
-//   $num_options = count($options);
-//   $form['available']['player_sel'] = array(
-//     '#type'  => 'select',
-//     '#title' => 'Available Players',
-//     '#multiple' => true,
-//     '#options' => $options,    
-//   );
-//   $form['players'] = array(
-//     '#type' => 'fieldset',
-//     '#title' => 'Players',
-//     '#attributes' => array(
-//       'class' => 'form-column'
-//     )    
-//   );
   $players = _plm_get_active_players($game);
   foreach ($players as $p) {
     //$attr = array('onClick' => "alert('Clicked $p->name pid:$p->pid last:$p->last');return false;");
@@ -1096,19 +1074,7 @@ function plm_entrants_form(&$form_state, $game=NULL) {
       '#value' => "$p->registered"
     );
   }
-//   $form['registered'] = array(
-//     '#type' => 'fieldset',
-//     '#attributes' => array(
-//       'class' => 'form-column'
-//     )    
-//   );
   $entrants = _plm_get_game_entrants($game->gid);
-//   $form['registered']['entrant_list'] = array(
-//     '#value' => theme('plm_game_entrants', $game, $entrants),
-//   );
-//   $form['#ajax'] = array(
-//     'enabled' => TRUE
-//   );
 
   $imgpath = drupal_get_path('module', 'plm') . '/img';
   $delimg = "$imgpath/del_button.png";
@@ -1116,15 +1082,7 @@ function plm_entrants_form(&$form_state, $game=NULL) {
   foreach ($entrants as $e) {
     $form['entrant'][$e->entid] = array(
       '#value' => l("$e->name","plm/players/pid/$e->pid"),
-      //'#value' => l("$e->name ($e->pid, $e->entid)","plm/players/pid/$e->pid"),
      );
-//     $form['delbutton']["$e->entid"] = array(
-//        '#type' => 'image_button',
-//        '#button_type' => 'submit',
-//        '#executes_submit_callback' => true,
-//        '#src' => $delimg,
-//        '#value' => "$e->entid",
-//     );
       $form['delbutton'][$e->entid] = array(
         '#value' => l('<img src="' . url($delimg) . '"/>', '#',array(
                     'html' => true,
@@ -1175,12 +1133,6 @@ function plm_entrants_form_submit($form, &$form_state) {
     $rec->name = $name;
     $r->pid = _plm_insert_player($rec);
   }
-//   if (!$oldrec) {
-//     if (_plm_insert_entrant($r)) {
-//       _plm_update_num_game_entrants($r->gid);
-//       //drupal_set_message("Registered $name");
-//     }
-//   }
   $sel = $form_state['values']['player_sel'];
   $entrants = array();
   if (is_array($sel)) {
@@ -1498,18 +1450,6 @@ function plm_payout_editor($payid=0) {
         }
         ksort($rowdata[$rownum], SORT_NUMERIC);
       }
-//       $num_players = 0;
-//       foreach($rowdata as $i => $row) {
-//         if ($row[0] > 100) break;
-//         if ($row[0] != $num_players) {
-//           if ($num_players && $row[0] > $num_players+1) {
-//             $newrow = array($num_players+1);
-//             $rowdata[$num_players+1] = $newrow;
-//           }
-//           $num_players = $row[0];
-//         }
-//       }
-      //$headers[$max_places+$num_headers] = array('data' => '', 'colspan' => 2);
       $headers[$max_places+$num_headers] = array(
         'data' => _plm_format_place($max_places+1),
         'class' => 'table-cmd'
@@ -1566,21 +1506,9 @@ function plm_payout_editor($payid=0) {
   return $output;
 } 
 
-// function plm_payout_new_form(&$form_state) {
-//       return drupal_get_form('plm_edit_payset_form');
-// }
 
 function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
   
-  // $form['new'] = array(
-  //   '#type'  => 'submit',
-  //   '#value' => 'New Payout Structure',
-    
-  // );
-  // $form['delete'] = array(
-  //   '#type'  => 'submit',
-  //   '#value' => 'Delete',
-  // );
   $payid = $payset->payid;
   if (!isset($payid)) $payid = 0;
   //drupal_set_message("payid: $payid");
@@ -1618,9 +1546,6 @@ function plm_edit_payset_form(&$form_state, $oldrec=NULL) {
   //drupal_set_message('plm_edit_payset_form()');
   
    if (isset($oldrec)){
-//      $form_state['storage']['oldrec'] = array(
-//        '#value' => $oldrec,
-//      );
      $form['payid'] = array(
        '#type' => 'hidden',
        '#value' => $oldrec->payid,
@@ -1749,17 +1674,6 @@ function plm_payout_delete_row_submit($form, &$form_state) {
   _plm_delete_payrules($payid, $num_players);
 }
 function plm_payrule_form(&$form_data, $payid, $num_players, $place, $payset=NULL) {
-  //drupal_set_message('plm_payrule_form()');
-  // $payrules = _plm_get_payrules($payid, $num_players);
-  // if ($payrules) {
-  //   foreach ($payrules as $rule) {
-  //     if ($rule->place == $place) $payrule = $rule;
-  //   }
-  // }
-
-
-  //popups_add_popups();
-
   if (!$payrule) $payrule = _plm_get_payrule($payid, $num_players, $place);
   if ($payset == NULL) $payset = _plm_get_payset($payid);
 

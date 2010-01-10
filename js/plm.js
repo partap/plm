@@ -61,9 +61,9 @@ function del_entrant(eid) {
                 alert('Error: ' + msg);
                 return;
             }
-            var a = idstr[0].split('"');
-            var prowid = a[1];
-            var prow = $('#'+prowid);
+            //var a = ;
+            //var prowid = a[1];
+            var prow = $('#'+idstr[0].split('"')[1]);
             prow.removeClass('not-avail');
 
             var delid='#ent-'+eid;
