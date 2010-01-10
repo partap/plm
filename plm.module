@@ -417,7 +417,7 @@ function plm_menu() {
     'page callback' => 'plm_payout_editor',
     //'page arguments' => array(4),
     'access arguments' => array('administer poker league'),
-    'type' => MENU_NORMAL_ITEM,
+    'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
   );
 

@@ -1482,7 +1482,7 @@ function plm_payout_editor($payid=0) {
           else $total += $row[$i]['data'];
           $rowdata[$rownum][$i] = array(
             'data' => $rowdata[$rownum][$i]['data'],
-            'class' => $row[$i]['class'] . ' edit', 
+            'class' => $rowdata[$rownum][$i]['class'] . ' edit', 
             'id' => "payout-$payset->payid-$num_players-$place",
           );
           //'attributes' => array('class' => 'popups-form')));
@@ -1557,7 +1557,9 @@ function plm_payout_editor($payid=0) {
         'id' => 'payouts'
       );
       //drupal_set_message('<pre>' . print_r($rowdata, TRUE) . '</pre>');
+      $output .= '<div class="scroll-wrapper">';
       $output .= theme('table', $headers, $rowdata, $attr, $caption);
+      $output .= '</div>';
     }
     
   }
@@ -1649,8 +1651,8 @@ function plm_edit_payset_form(&$form_state, $oldrec=NULL) {
     '#type' => 'textfield',
     '#title' => t('Pot Bonus'),
     '#description' => t('Extra added to prize pool'),
-    '#required' => TRUE,
-    '#default_value' => $oldrec->pot_bonus,
+    '#required' => false,
+    '#default_value' => (int)$oldrec->pot_bonus,
     '#size' => 10,
     '#maxlength' => 10,    
   );
@@ -1684,8 +1686,8 @@ function plm_edit_payset_form_submit($form, &$form_state) {
   //$rec->payid = $oldrec->payid;
   $rec->payid = $payid;
   $rec->title = $values['title'];
-  $rec->buyin = $values['buyin'];
-  $rec->pot_bonus = $values['pot_bonus'];
+  $rec->buyin = (int)$values['buyin'];
+  $rec->pot_bonus = (int)$values['pot_bonus'];
   if ($isnew){
     $rec->payid = _plm_insert_payset($rec);
     $gen_rules = true;
