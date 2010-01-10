@@ -528,7 +528,10 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     $prefix = variable_get('plm_default_prefix', 'Game');
     $oldrec->title = $prefix . ' ' . (_plm_get_num_games($sid)+1);
   }
-  $form['title'] = array(
+  $form['id_section'] = array(
+    '#type' => 'fieldset',
+  );
+  $form['id_section']['title'] = array(
     '#type' => 'textfield',
     '#title' => t('Title'),
     '#required' => TRUE,
@@ -536,6 +539,19 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#size' => 32,
     '#maxlength' => 32,
     '#weight' => -5
+  );
+  if ($oldrec->hid){
+    $rec = _plm_get_player($oldrec->hid);
+    $host = $rec->name;
+  }
+  $form['id_section']['host_name'] = array(
+    '#type'          => 'textfield',
+    '#title'         => t('Host'),
+    '#autocomplete_path'  => 'plm/autocomplete/player',                  
+    '#default_value' => $host,
+    '#size' => 16,
+    '#maxlength' => 16,
+
   );
 
   $fmt = 'D, M j Y';
@@ -552,7 +568,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
       $game_date = $last_date + (60*60*24*7); // Add one week by default
     }
   }
-  $form['game_date'] = array(
+  $form['id_section']['game_date'] = array(
     '#type'          => 'date_popup',
     '#title'         => t('Game Date'),
     '#required'      => TRUE,
@@ -560,27 +576,17 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#default_value' => format_date($game_date, 'custom', $widget_fmt, 0),
   );
   
-  if ($oldrec->hid){
-    $rec = _plm_get_player($oldrec->hid);
-    $host = $rec->name;
-  }
-  $form['host_name'] = array(
-    '#type'          => 'textfield',
-    '#title'         => t('Game Host'),
-    '#autocomplete_path'  => 'plm/autocomplete/player',                  
-    '#default_value' => $host,
-    '#size' => 16,
-    '#maxlength' => 16,
-
-  );
 
   if ($oldrec->gid) 
     $list_entrants = $oldrec->list_entrants;
   else 
     // Use season default
-    $list_entrants = $season->list_entrants;
+    //$list_entrants = $season->list_entrants;
+    $list_entrants = true;
 
-  $form['list_entrants'] = array(
+  $form['player_section'] = array('#type' => 'fieldset');
+
+  $form['player_section']['list_entrants'] = array(
     '#type'          => 'checkbox',
     '#title'         => 'Record All Entrants',
     '#required'      => TRUE,
@@ -588,7 +594,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   );
 
   if ($oldrec->gid){
-    $form['num_players'] = array(
+    $form['player_section']['num_players'] = array(
       '#type'          => 'textfield',
       '#title'         => 'Num Players',
       '#required'      => TRUE,
@@ -602,7 +608,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     // );
   }
   else {
-    $form['num_players'] = array(
+    $form['player_section']['num_players'] = array(
       '#type' => 'hidden',
       '#value' => '0',
     );
@@ -611,6 +617,9 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     //   '#value' => '0',
     // );
   }
+
+  $form['pay_section'] = array('#type' => 'fieldset');
+
   $submit_js = "document.getElementById('plm-select-payset-form').submit();";
   $options = array(0 => 'Select a Payout');
   $paysets = _plm_get_paysets();
@@ -622,14 +631,14 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   }
   if (!$oldrec->gid && !$oldrec->payid)
     $oldrec->payid = variable_get('plm_default_payset', 0);
-  $form['payset_sel'] = array(
+  $form['pay_section']['payset_sel'] = array(
     '#type' => 'select',
     '#title' => 'Payout Structure',
     '#default_value' => $oldrec->payid,
     '#options' => $options,
   );
 
-  $form['pot_start'] = array(
+  $form['pay_section']['pot_start'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Initial Pot',
     '#required'      => TRUE,
@@ -637,7 +646,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 5,
     '#default_value' => $oldrec->pot_start+0,
   );
-  $form['buyin'] = array(
+  $form['pay_section']['buyin'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Buy-In',
     '#required'      => TRUE,
@@ -651,8 +660,8 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     $announced =  $oldrec->announced;
     if ($oldrec->finished) $announced = TRUE;
   }
-
-  $form['announced'] = array(
+  $form['presentation'] = array('#type' => 'fieldset');
+  $form['presentation']['announced'] = array(
     '#type' => 'checkbox',
     '#title' => t('Announced'),
     '#required' => TRUE,
@@ -668,7 +677,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
       '#value' => theme('plm_game_results', $oldrec, $results),
       '#weight' => 90,
     );
-    $form['finished'] = array(
+    $form['presentation']['finished'] = array(
       '#type' => 'checkbox',
       '#title' => t('Finished'),
       '#required' => TRUE,
@@ -1022,6 +1031,8 @@ function plm_entrants_form(&$form_state, $game=NULL) {
   $game_title = $game->title;
   $gid = $game->gid;
 
+  $is_admin = user_access('administer poker league');
+
   $path = drupal_get_path('module', 'plm');
   //drupal_set_message('path: ' . $path);
   drupal_add_js("$path/js/jquery.jeditable.js");
@@ -1033,46 +1044,48 @@ function plm_entrants_form(&$form_state, $game=NULL) {
   $form['_gid'] = array('#type' => 'value', '#value' => $gid);
   $form['_game_date'] = array('#type' => 'value', '#value' => $game->game_date);
 
-  $form['new_player'] = array(
-    '#type' => 'fieldset',    
-  );
+  if ($is_admin){
+    $form['new_player'] = array(
+      '#type' => 'fieldset',    
+    );
 
-  $form['new_player']['name'] = array(
-   '#type' => 'textfield',
-   '#title' => 'New Player',
-   '#size' => 20,
-   '#autocomplete_path'  => 'plm/autocomplete/player',                  
-   '#required'      => false,
-   // Set initial focus
-   '#attributes'    => array('class' => 'focus'),
-  );
+    $form['new_player']['name'] = array(
+      '#type' => 'textfield',
+      '#title' => 'New Player',
+      '#size' => 20,
+      '#autocomplete_path'  => 'plm/autocomplete/player',                  
+      '#required'      => false,
+      // Set initial focus
+      '#attributes'    => array('class' => 'focus'),
+    );
 
-  $submit_label = 'Add Player';
-  $form['new_player']['submit'] = array(
-    '#type' => 'submit',
-    '#value' => $submit_label,
-  );
-  $selector = '.focus';
-  $jquery_snippet = 
-    '$(document).ready(function(){
+    $submit_label = 'Add Player';
+    $form['new_player']['submit'] = array(
+      '#type' => 'submit',
+      '#value' => $submit_label,
+    );
+    $selector = '.focus';
+    $jquery_snippet = 
+      '$(document).ready(function(){
      var i = $("'. $selector .'").not("[@type=\'hidden\']");
      if (i.val() != "") {}
      i[0].focus();});'; 
-  drupal_add_js($jquery_snippet, 'inline'); 
+    drupal_add_js($jquery_snippet, 'inline'); 
 
-  $players = _plm_get_active_players($game);
-  foreach ($players as $p) {
-    //$attr = array('onClick' => "alert('Clicked $p->name pid:$p->pid last:$p->last');return false;");
-    $attr = array('onClick' => "add_entrant($gid, $p->pid);return false;");
-    $form['player'][$p->pid] = array(
-      '#value' => l("$p->name","#",array('attributes' => $attr))
-    );
-    $form['last']["$p->pid"] = array(
-      '#value' => "$p->last"
-    );
-    $form['registered']["$p->pid"] = array(
-      '#value' => "$p->registered"
-    );
+    $players = _plm_get_active_players($game);
+    foreach ($players as $p) {
+      //$attr = array('onClick' => "alert('Clicked $p->name pid:$p->pid last:$p->last');return false;");
+      $attr = array('onClick' => "add_entrant($gid, $p->pid);return false;");
+      $form['player'][$p->pid] = array(
+        '#value' => l("$p->name","#",array('attributes' => $attr))
+      );
+      $form['last']["$p->pid"] = array(
+        '#value' => "$p->last"
+      );
+      $form['registered']["$p->pid"] = array(
+        '#value' => "$p->registered"
+      );
+    }
   }
   $entrants = _plm_get_game_entrants($game->gid);
 
@@ -1082,7 +1095,8 @@ function plm_entrants_form(&$form_state, $game=NULL) {
   foreach ($entrants as $e) {
     $form['entrant'][$e->entid] = array(
       '#value' => l("$e->name","plm/players/pid/$e->pid"),
-     );
+    );
+    if ($is_admin)
       $form['delbutton'][$e->entid] = array(
         '#value' => l('<img src="' . url($delimg) . '"/>', '#',array(
                     'html' => true,
@@ -1182,42 +1196,7 @@ function theme_plm_entrants_form($form) {
   
 
   $output .= drupal_render($form['new_player']);
-
-  if ($is_admin) {
-    $game_date = $form['_game_date']['#value'];
-    
-    $headers = array();
-  //$headers[] = NULL;
-    $headers[] = array('data' => 'Name');
-    $headers[] = array('data' => 'Last Played');
-    if (isset($form['player']) && is_array(($form['player']))) {
-      $num = 0;
-      $rows = array();
-      foreach (element_children($form['player']) as $pid) {
-        $rowdata = array();
-        //$rowdata[] = array('data' => "<a href='#'>add</a>");
-        
-        $rowdata[] = array('data' => drupal_render($form['player'][$pid]));
-        $last_date = drupal_render($form['last'][$pid]);
-        if (is_numeric($last_date)){
-          $weeks = (int) (($game_date - $last_date) / (60 * 60 * 24 * 7));
-          $weeks = $weeks . ' weeks ago';
-        }
-        else $weeks = 'Unknown';
-        $rowdata[] = array('data' => $weeks);
-        $class = drupal_render($form['registered'][$pid])?'not-avail':''; 
-        $rows[] = array('id' => "avail-$pid", 'class' => $class, 'data' => $rowdata);
-      }
-    }
-    //$output .= drupal_render($form['players']);
-    $attr = array('id' => 'plm-available-list');
-    $output .= '<div class="tbl-wrapper">';
-    $caption = 'Available Players:';
-    $output .= theme('table', $headers, $rows, $attr, $caption);
-    $output .= '</div>';
-  }
-
-
+  $game_date = $form['_game_date']['#value'];
 
   $headers = array();
   $headers[] = array('data' => '#', 'class' => 'numcol');
@@ -1240,13 +1219,41 @@ function theme_plm_entrants_form($form) {
      }
   }
   
-  $output .= drupal_render($form['registered']);
+  //$output .= drupal_render($form['registered']);
   
-    $attr = array('id' => 'plm-entrants-list');
+  $attr = array('id' => 'plm-entrants-list');
+  $output .= '<div class="tbl-wrapper">';
+  $caption = 'Registered Players:';
+  $output .= theme('table', $headers, $rows, $attr, $caption);
+  $output .= '</div>';
+  
+  if ($is_admin) {
+    $headers = array();
+    $headers[] = array('data' => 'Name');
+    $headers[] = array('data' => 'Last Played');
+    if (isset($form['player']) && is_array(($form['player']))) {
+      $num = 0;
+      $rows = array();
+      foreach (element_children($form['player']) as $pid) {
+        $rowdata = array();
+        $rowdata[] = array('data' => drupal_render($form['player'][$pid]));
+        $last_date = drupal_render($form['last'][$pid]);
+        if (is_numeric($last_date)){
+          $weeks = (int) (($game_date - $last_date) / (60 * 60 * 24 * 7));
+          $weeks = $weeks . ' weeks ago';
+        }
+        else $weeks = 'Unknown';
+        $rowdata[] = array('data' => $weeks);
+        $class = drupal_render($form['registered'][$pid])?'not-avail':''; 
+        $rows[] = array('id' => "avail-$pid", 'class' => $class, 'data' => $rowdata);
+      }
+    }
+    $attr = array('id' => 'plm-available-list');
     $output .= '<div class="tbl-wrapper">';
-    $caption = 'Registered Players:';
+    $caption = 'Available Players:';
     $output .= theme('table', $headers, $rows, $attr, $caption);
     $output .= '</div>';
+  }
 
   $output .= drupal_render($form);
 
