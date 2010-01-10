@@ -1022,8 +1022,16 @@ function plm_entrants_form(&$form_state, $game=NULL) {
   $game_title = $game->title;
   $gid = $game->gid;
 
-  $form['_gid'] = array('#type' => 'value', '#value' => $gid);
+  $path = drupal_get_path('module', 'plm');
+  //drupal_set_message('path: ' . $path);
+  drupal_add_js("$path/js/jquery.jeditable.js");
+  drupal_add_js(array('plm' => array(
+        'modulePath' => $path,
+      )), 'setting');
+  drupal_add_js("$path/js/plm.js");
 
+  $form['_gid'] = array('#type' => 'value', '#value' => $gid);
+  $form['_game_date'] = array('#type' => 'value', '#value' => $game->game_date);
 
   $form['new_player'] = array(
     '#type' => 'fieldset',    
@@ -1052,28 +1060,48 @@ function plm_entrants_form(&$form_state, $game=NULL) {
      i[0].focus();});'; 
   drupal_add_js($jquery_snippet, 'inline'); 
 
-  $form['available'] = array(
-    '#type' => 'fieldset',
-    '#attributes' => array(
-      'class' => 'form-column'
-    )    
-  );
+//   $form['available'] = array(
+//     '#type' => 'fieldset',
+//     '#attributes' => array(
+//       'class' => 'form-column'
+//     )    
+//   );
 
-  $options = _plm_get_active_player_options($game);
-  $num_options = count($options);
-  $form['available']['player_sel'] = array(
-    '#type'  => 'select',
-    '#title' => 'Available Players',
-    '#multiple' => true,
-    '#options' => $options,    
-    //'#size' => $num_options,
-  );
-  $form['registered'] = array(
-    '#type' => 'fieldset',
-    '#attributes' => array(
-      'class' => 'form-column'
-    )    
-  );
+//   $options = _plm_get_active_players_options($game);
+//   $num_options = count($options);
+//   $form['available']['player_sel'] = array(
+//     '#type'  => 'select',
+//     '#title' => 'Available Players',
+//     '#multiple' => true,
+//     '#options' => $options,    
+//   );
+//   $form['players'] = array(
+//     '#type' => 'fieldset',
+//     '#title' => 'Players',
+//     '#attributes' => array(
+//       'class' => 'form-column'
+//     )    
+//   );
+  $players = _plm_get_active_players($game);
+  foreach ($players as $p) {
+    //$attr = array('onClick' => "alert('Clicked $p->name pid:$p->pid last:$p->last');return false;");
+    $attr = array('onClick' => "add_entrant($gid, $p->pid);return false;");
+    $form['player'][$p->pid] = array(
+      '#value' => l("$p->name","#",array('attributes' => $attr))
+    );
+    $form['last']["$p->pid"] = array(
+      '#value' => "$p->last"
+    );
+    $form['registered']["$p->pid"] = array(
+      '#value' => "$p->registered"
+    );
+  }
+//   $form['registered'] = array(
+//     '#type' => 'fieldset',
+//     '#attributes' => array(
+//       'class' => 'form-column'
+//     )    
+//   );
   $entrants = _plm_get_game_entrants($game->gid);
 //   $form['registered']['entrant_list'] = array(
 //     '#value' => theme('plm_game_entrants', $game, $entrants),
@@ -1086,19 +1114,21 @@ function plm_entrants_form(&$form_state, $game=NULL) {
   $delimg = "$imgpath/del_button.png";
   $destination = drupal_get_destination();
   foreach ($entrants as $e) {
-    $form['name'][$e->entid] = array(
+    $form['entrant'][$e->entid] = array(
       '#value' => l("$e->name","plm/players/pid/$e->pid"),
       //'#value' => l("$e->name ($e->pid, $e->entid)","plm/players/pid/$e->pid"),
      );
-    $form['delbutton']["$e->entid"] = array(
-       '#type' => 'image_button',
-       '#button_type' => 'submit',
-       '#executes_submit_callback' => true,
-       //'#name' => "del_button_$e->pid",
-       
-       '#src' => $delimg,
-       '#value' => "$e->entid",
-    );
+//     $form['delbutton']["$e->entid"] = array(
+//        '#type' => 'image_button',
+//        '#button_type' => 'submit',
+//        '#executes_submit_callback' => true,
+//        '#src' => $delimg,
+//        '#value' => "$e->entid",
+//     );
+      $form['delbutton'][$e->entid] = array(
+        '#value' => l('<img src="' . url($delimg) . '"/>', '#',array(
+                    'html' => true,
+                    'attributes' => array('onClick' => "del_entrant($e->entid);return false;"))));
   }
   return $form;  
 }
@@ -1198,46 +1228,154 @@ function theme_plm_entrants_form($form) {
 
   $is_admin = user_access('administer poker league');
   
-  $headers = array();
-  if (!$plm_game->finished && $is_admin) {
-    $headers[] = '';
+
+  $output .= drupal_render($form['new_player']);
+
+  if ($is_admin) {
+    $game_date = $form['_game_date']['#value'];
+    
+    $headers = array();
+  //$headers[] = NULL;
+    $headers[] = array('data' => 'Name');
+    $headers[] = array('data' => 'Last Played');
+    if (isset($form['player']) && is_array(($form['player']))) {
+      $num = 0;
+      $rows = array();
+      foreach (element_children($form['player']) as $pid) {
+        $rowdata = array();
+        //$rowdata[] = array('data' => "<a href='#'>add</a>");
+        
+        $rowdata[] = array('data' => drupal_render($form['player'][$pid]));
+        $last_date = drupal_render($form['last'][$pid]);
+        if (is_numeric($last_date)){
+          $weeks = (int) (($game_date - $last_date) / (60 * 60 * 24 * 7));
+          $weeks = $weeks . ' weeks ago';
+        }
+        else $weeks = 'Unknown';
+        $rowdata[] = array('data' => $weeks);
+        $class = drupal_render($form['registered'][$pid])?'not-avail':''; 
+        $rows[] = array('id' => "avail-$pid", 'class' => $class, 'data' => $rowdata);
+      }
+    }
+    //$output .= drupal_render($form['players']);
+    $attr = array('id' => 'plm-available-list');
+    $output .= '<div class="tbl-wrapper">';
+    $caption = 'Available Players:';
+    $output .= theme('table', $headers, $rows, $attr, $caption);
+    $output .= '</div>';
   }
+
+
+
+  $headers = array();
   $headers[] = array('data' => '#', 'class' => 'numcol');
+  if ($is_admin) $headers[] = '';
   $headers[] = array('data' => 'Name');
 
-  
-  
-  if (isset($form['name']) && is_array(($form['name']))) {
+  $rows = array();
+  if (isset($form['entrant']) && is_array(($form['entrant']))) {
     $num = 0;
-    $rows = array();
-    foreach (element_children($form['name']) as $pid) {
+    foreach (element_children($form['entrant']) as $eid) {
       $rowdata = array();
-      $rowdata[] = array(
-        'data' => drupal_render($form['delbutton'][$pid]),
-        'class' => 'narrow-mid-col');
       $rowdata[] = array('data' => ++$num, 'class' => 'numcol');
-      $rowdata[] = array('data' => drupal_render($form['name'][$pid]));
-      $rows[] = $rowdata;
-    }
+      if ($is_admin) 
+        $rowdata[] = array(
+          'data' => drupal_render($form['delbutton'][$eid]),
+          'class' => 'narrow-mid-col'
+        );
+      $rowdata[] = array('data' => drupal_render($form['entrant'][$eid]));
+      $rows[] = array('id' => "ent-$eid", 'data' => $rowdata);
+     }
   }
   
-  $output .= drupal_render($form['new_player']);
-  $output .= drupal_render($form['available']);
   $output .= drupal_render($form['registered']);
-
-  if ($rows){
+  
     $attr = array('id' => 'plm-entrants-list');
-    $output .= '<div id="tbl-wrapper">';
+    $output .= '<div class="tbl-wrapper">';
     $caption = 'Registered Players:';
     $output .= theme('table', $headers, $rows, $attr, $caption);
     $output .= '</div>';
 
-  }
   $output .= drupal_render($form);
 
   return $output;
 
 }
+
+function plm_ajax_add_entrant() {
+  $gid = $_REQUEST['gid'];
+  $pid = $_REQUEST['pid'];
+
+  $r->gid = $gid;
+  $r->pid = $pid;
+  $eid = _plm_insert_entrant($r);
+  if (!$eid){
+    // HTTP/1.1 500 Internal Server Error
+    header('x', TRUE, 500);
+    exit;
+  }
+  $player = _plm_get_player($pid);
+  $num_entrants = _plm_get_num_game_entrants($gid);
+  $imgpath = drupal_get_path('module', 'plm') . '/img';
+  $delimg = "$imgpath/del_button.png";
+
+
+  $rowdata = array();
+  $rowdata[] = array('data' => $num_entrants, 'class' => 'numcol');
+  $rowdata[] = array(
+    'data' => l('<img src="' . url($delimg) . '"/>', '#',array(
+              'html' => true,
+              'attributes' => array('onClick' => "del_entrant($eid);return false;"))),
+    'class' => 'narrow-mid-col');
+  $rowdata[] = array('data' =>  l($player->name,"plm/players/pid/$pid"));
+  $attr = array('id' => "ent-$eid");
+
+  $output .= table_row($rowdata, $attr);
+  echo $output;
+}
+function plm_ajax_del_entrant() {
+  $eid = $_REQUEST['eid'];
+
+  $entrant = _plm_get_entrant($eid);
+  if (!isset($entrant)){
+    // HTTP/1.1 500 Internal Server Error
+    header('x', TRUE, 500);
+    exit;
+  }
+  _plm_delete_entrant($eid);
+  $player = _plm_get_player($entrant->pid);
+  $game   = _plm_get_game($entrant->gid);
+  $game_date = $game->game_date;
+
+  $name = l($player->name, '#', array('attributes' => array(
+              'onclick' => 'add_entrant('.$entrant->gid.', '.$player->pid.');return false;')));
+  $prev_game = _plm_get_prev_game($player->pid, $entrant->gid);
+  $last_date = $prev_game->game_date;
+  if (is_numeric($last_date)){
+    $weeks = (int) (($game_date - $last_date) / (60 * 60 * 24 * 7));
+    $weeks = $weeks . ' weeks ago';
+  }
+  else $weeks = 'Unknown';
+      
+
+  $rowdata = array();
+  $rowdata[] = array('data' => $name,'class' => 'narrow-mid-col');
+  $rowdata[] = array('data' => $weeks);
+  $attr = array('id' => "avail-$player->pid");
+
+  $output .= table_row($rowdata, $attr);
+  echo $output;
+}
+
+function table_row($cells, $attributes = NULL) {
+  $output = '<tr ' . drupal_attributes($attributes) . '>';
+  foreach ($cells as $cell) {
+    $output .= _theme_table_cell($cell);
+  }
+  $output .= '</tr>';
+  return $output;
+}
+
 function plm_entrant_cancel_submit($form, &$form_state) {
   $oldrec        = $form_state['values']['_entrant'];
   $form_state['redirect'] = 'plm/games/' . $r->gid . '/entrants';

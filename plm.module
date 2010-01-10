@@ -488,6 +488,18 @@ function plm_menu() {
     'file' => 'plm_admin.inc',
     'type' => MENU_CALLBACK,
   );
+  $items['plm/ajax/add_entrant'] = array(
+      'page callback' => 'plm_ajax_add_entrant', 
+      'access arguments' => array('administer poker league'),
+      'file' => 'plm_admin.inc',
+      'type' => MENU_CALLBACK,
+  );
+  $items['plm/ajax/del_entrant'] = array(
+      'page callback' => 'plm_ajax_del_entrant', 
+      'access arguments' => array('administer poker league'),
+      'file' => 'plm_admin.inc',
+      'type' => MENU_CALLBACK,
+  );
   return $items;
   
 }

@@ -71,7 +71,7 @@ function _plm_get_rankings($sid, $limit = NULL) {
   }
   return $list;
 }
-function _plm_get_active_player_options($game) {
+function _plm_get_active_players_options($game) {
   $gid = $game->gid;
   $game_date = $game->game_date;
   //$now = time();
@@ -95,6 +95,37 @@ function _plm_get_active_player_options($game) {
   return $list;
 }
 
+function _plm_get_active_players($game) {
+  $gid = $game->gid;
+  $game_date = $game->game_date;
+  //$now = time();
+  $sql = "SELECT p.pid AS pid, p.name AS name, Max(g.game_date) AS last,
+          (CASE WHEN p.pid IN (SELECT x.pid FROM {plm_entrant} x WHERE x.gid=%d) 
+             THEN 1 ELSE 0 END) AS registered
+          FROM {plm_player} p
+          LEFT JOIN {plm_entrant} e ON p.pid=e.pid 
+          LEFT JOIN {plm_game} g 
+            ON (e.gid=g.gid AND g.game_date < (SELECT g.game_date from {plm_game} g where g.gid=%d))
+          GROUP BY p.pid,p.name
+          ORDER BY name;";
+  $result = db_query($sql, $gid, $gid);
+  $list = array();
+  while ($row = db_fetch_object($result)) {
+    $list[] = $row;
+  }
+  return $list;
+}
+
+function _plm_get_prev_game($pid, $gid){
+  $sql = "SELECT g.gid, g.game_date 
+          FROM plm_game g 
+          WHERE g.gid=(
+            SELECT g.gid FROM plm_entrant e LEFT JOIN plm_game g ON (g.gid=e.gid AND e.pid=%d) 
+            WHERE g.game_date < (SELECT l.game_date FROM plm_game l WHERE l.gid=%d) 
+            ORDER BY g.game_date DESC LIMIT 1)";
+  $result = db_query($sql, $pid, $gid);
+  return db_fetch_object($result);
+}
 
 function _plm_insert_player($player) {
   $sql = "INSERT INTO {plm_player} (name, uid) VALUES ('%s', %d)";
