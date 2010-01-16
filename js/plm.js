@@ -40,6 +40,8 @@ function add_entrant(gid, pid) {
             //$(id).remove();
             $(id).addClass('not-avail');
             $('#plm-entrants-list tbody').append(msg);
+            var num_entrants = $('#plm-entrants-list > tbody tr').length;
+            $('#plm-entrants-list > caption').html(num_entrants + ' Entrants');
         },
         error: function(xhr,status,errorThrown){
             alert('Error: ' + status + ',' + errorThrown);
@@ -55,14 +57,11 @@ function del_entrant(eid) {
             eid: eid,
         },
         success: function(msg) {
-            //alert(msg);
-            var idstr = msg.match(/id="[^"]+"/);
+            var idstr = msg.match(/id=\"[^\"]+\"/);
             if (!idstr) {
                 alert('Error: ' + msg);
                 return;
             }
-            //var a = ;
-            //var prowid = a[1];
             var prow = $('#'+idstr[0].split('"')[1]);
             prow.removeClass('not-avail');
 
@@ -71,6 +70,8 @@ function del_entrant(eid) {
             $('#plm-entrants-list > tbody > tr').each(function(index) {
                 this.cells[0].innerHTML=index+1;
             });
+            var num_entrants = $('#plm-entrants-list > tbody tr').length;
+            $('#plm-entrants-list > caption').html(num_entrants + ' Entrants');
 
         },
         error: function(xhr,status,errorThrown){

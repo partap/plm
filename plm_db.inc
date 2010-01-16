@@ -25,11 +25,21 @@ function _plm_get_player_by_uid($uid) {
 
 function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
   if (!$sort_phrase) $sort_phrase = "ORDER BY name";
+//   $sql = "SELECT p.pid, p.name, p.uid,
+//           SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places,
+//           SUM(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins
+//           FROM {plm_player} p 
+//           LEFT JOIN {plm_result} r ON p.pid=r.pid "
   $sql = "SELECT p.pid, p.name, p.uid,
           SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places,
-          SUM(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins
-          FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid " 
-          . $where_phrase . "GROUP BY p.pid, p.name, p.uid " . $sort_phrase . " NULLS LAST";  
+          SUM(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins,
+          Max(g.game_date) as last_date
+          FROM {plm_game} g
+          LEFT JOIN {plm_entrant} e ON e.gid=g.gid
+          LEFT JOIN {plm_player} p ON p.pid = e.pid
+          LEFT JOIN {plm_result} r ON p.pid=r.pid AND r.gid=g.gid
+          WHERE g.finished != 0"
+          . $where_phrase . " GROUP BY p.pid, p.name, p.uid " . $sort_phrase . " NULLS LAST";  
   //drupal_set_message("SQL1: $sql");
   if ($max > 0){
     $count_qry = 'SELECT count(*) from {plm_player}';
@@ -104,11 +114,11 @@ function _plm_get_active_players($game) {
              THEN 1 ELSE 0 END) AS registered
           FROM {plm_player} p
           LEFT JOIN {plm_entrant} e ON p.pid=e.pid 
-          LEFT JOIN {plm_game} g 
-            ON (e.gid=g.gid AND g.game_date < (SELECT g.game_date from {plm_game} g where g.gid=%d))
+          LEFT JOIN {plm_result} r ON p.pid=r.pid
+          LEFT JOIN {plm_game} g ON ((e.gid=g.gid OR r.gid=g.gid) AND g.game_date < %d)
           GROUP BY p.pid,p.name
           ORDER BY name;";
-  $result = db_query($sql, $gid, $gid);
+  $result = db_query($sql, $gid, $game_date);
   $list = array();
   while ($row = db_fetch_object($result)) {
     $list[] = $row;

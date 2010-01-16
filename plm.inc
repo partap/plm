@@ -18,6 +18,20 @@ function _plm_format_place($place) {
   }
   return $place . $suffix;
 }
+function _plm_format_time_elapsed($seconds) {
+    $days = (int) ($seconds / (60*60*24));
+    if ($days < 7) return format_plural($days, '1 day',  "@count days");
+    $weeks = (int) ($days / 7);
+    if ($weeks < 8) return format_plural($weeks, '1 week',  "@count weeks");
+    $months = (int) ($weeks / 4);
+    if ($months < 12) return format_plural($months, '1 month',  "@count months");
+    $years  = (int) ($weeks / 52);
+    $months %= 12;
+    $elapsed = format_plural($years, '1 year', '@count years');
+    if ($months)
+        $elapsed .= ', ' . format_plural($months, '1 month', '@count months');
+    return $elapsed;    
+}
 
 function _plm_rules_default_buyin($sid) {
   return variable_get('plm_default_buyin', 10);

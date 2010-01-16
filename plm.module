@@ -739,6 +739,7 @@ function plm_players_list($max_players_per_page=100) {
     if ($_GET['order'] == 'Places')   $_GET['sort'] = 'desc';
     if ($_GET['order'] == 'Points')   $_GET['sort'] = 'desc';
     if ($_GET['order'] == 'Winnings') $_GET['sort'] = 'desc';
+    //if ($_GET['order'] == 'Last Played')     $_GET['sort'] = 'desc';
   }
   // make default sort column active
   // default sorted by winnings if logged in
@@ -778,6 +779,8 @@ function plm_players_list($max_players_per_page=100) {
     $header[] = array('data' => t('Winnings'),
                 'class' => 'numcol',
                 'field' => 'cash' );
+    $header[] = array('data' => t('Last Played'),
+                'field' => 'last_date' );
   }
   if ($is_admin) {
     $header[] = array('data' => t(''), 'colspan' => 1);
@@ -789,6 +792,7 @@ function plm_players_list($max_players_per_page=100) {
   $resnum = 0;
   $page = $_GET['page'];
   if ($page > 0) $resnum = $page * $max_players_per_page;
+  $now = time();
   foreach ($players as $rec) {
     $resnum++;
     $username = '';
@@ -812,6 +816,11 @@ function plm_players_list($max_players_per_page=100) {
       $rowdata[] = array(
         'data' => $rec->cash ? '$' . $rec->cash : '', 
         'class' => 'numcol');    
+      if ($rec->last_date>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_date) ;
+      else $elapsed = 'unknown';
+      $rowdata[] = array(
+          'data' => $elapsed,
+      );    
     }
     if ($is_admin) {
       $rowdata[] = array(
@@ -820,12 +829,7 @@ function plm_players_list($max_players_per_page=100) {
                  //array('attributes' => array('class' => 'popups-form'))),
         'class' => 'narrowcol');
 
-      // No, don't make it too easy to delete a player
-      //$rowdata[] = array(
-      //  'data' => l(t('delete'), 'plm/players/pid/' . $rec->pid . '/delete'),
-      //  'class' => 'narrowcol');
     }
-    //$rows[] = array('data' => $rowdata, 'class' => $rowclass);
     $rows[] = $rowdata;
   }
 
@@ -1809,6 +1813,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
   }
   if ($rows){
     $attr = array('id' => 'plm-entrants-list');
+    $output .= '<div class="layout-box">';
     $output .= '<div id="tbl-wrapper">';
     $caption = 'Registered Players:';
     $output .= theme('table', $headers, $rows, $attr, $caption);
@@ -1817,6 +1822,7 @@ function theme_plm_game_entrants($plm_game, $entrants) {
     //  'data' => theme('table', $headers, $rows, $attr),
     //  'class' => 'top-aligned'
     //);
+    $output .= '</div>';
     $output .= '</div>';
     //if (!$plm_game->finished && $is_admin) {
     //  $output .= $addlink;
