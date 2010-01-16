@@ -603,37 +603,21 @@ function plm_rankings($plm_season=NULL) {
   $output .= drupal_get_form('plm_ranking_season_form', $sid);
 
   $header = array(
-    array(
-      'data' => t('Rank'),
-      'class' => 'numcol',
-    ),
-    array(
-      'data' => t('Name'),
-    ),
-    array(
-      'data' => t('Points'),
-      'class' => 'numcol',
-    ),
-//     array('data' => t('Wins'),
-//       'class' => 'numcol',
-//     ),
-    array('data' => t('Places'),
-      'class' => 'numcol',
-    ),
-    array('data' => t('Entries'),
-      'class' => 'numcol',
-    ),
-    array('data' => t('Place %'),
-      'class' => 'numcol',
-    ),
+    array('data' => t('Rank'),'class' => 'numcol'),
+    array('data' => t('Name')),
+    array('data' => t('Points'), 'class' => 'numcol'),
   );
   // Hide cash stats!
   if ($is_member) {
-    $header[] = array('data' => t('$Cash'), 'class' => 'numcol');
+    $header[] = array('data' => t('Cash'), 'class' => 'numcol');
   }
   if ($is_admin) {
-    $header[] = array('data' => t('$Net'), 'class' => 'numcol');
+    $header[] = array('data' => t('Net'), 'class' => 'numcol');
   }
+  $header[] = array('data' => t('Places'), 'class' => 'numcol' );
+  $header[] = array('data' => t('Games<br/>Played'), 'class' => 'numcol' );
+  $header[] = array('data' => t('Place %'), 'class' => 'numcol' );
+
     // time since last points earned
   if ($sid == $current_sid){
     $header[] = array(
@@ -675,22 +659,6 @@ function plm_rankings($plm_season=NULL) {
         'data' => $rec->points,
         'class' => 'numcol',
       ),
-//       array(
-//         'data' => $rec->wins ? $rec->wins : '',
-//         'class' => 'numcol',
-//       ),
-      array(
-        'data' => $rec->places ? $rec->places : '',
-        'class' => 'numcol',
-      ),
-      array(
-        'data' => $rec->entries ? $rec->entries : '',
-        'class' => 'numcol',
-      ),
-      array(
-        'data' => (($rec->entries>0)?(int)($rec->places*100/$rec->entries):0) . '%',
-        'class' => 'numcol',
-      ),
     );
     // Hide cash stats!
     if ($is_member) {
@@ -699,6 +667,7 @@ function plm_rankings($plm_season=NULL) {
         'class' => 'numcol',
       );
     }
+    // Don't show this to the fishes!
     if ($is_admin) {
       $net = $rec->cash-$rec->buyin;
       if ($net < 0) $str = '($'.-$net.')';
@@ -711,6 +680,19 @@ function plm_rankings($plm_season=NULL) {
         'class' => $class,
       );
     }
+    $rowdata[] = array(
+      'data' => $rec->places ? $rec->places : '',
+      'class' => 'numcol',
+    );
+    $rowdata[] =  array(
+      'data' => $rec->entries ? $rec->entries : '',
+      'class' => 'numcol',
+    );
+    $rowdata[] =  array(
+      'data' => (($rec->entries>0)?(int)($rec->places*100/$rec->entries):0) . '%',
+      'class' => 'numcol',
+    );
+
     // time since last points earned
     if ($sid == $current_sid){
       //if ($rec->latest_place == 0)
