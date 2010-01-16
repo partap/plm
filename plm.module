@@ -588,9 +588,6 @@ function plm_rankings($plm_season=NULL) {
   //$session_sid = $_SESSION['ranking_sid'];
   $current_sid=variable_get('plm_current_season', 0);
 
-  //if (!isset($plm_season) && $session_sid > 0){
-  //  $plm_season = _plm_get_season($session_sid);
-  //}
   if (!isset($plm_season)){
     $plm_season = _plm_get_season($current_sid);
   }
@@ -601,6 +598,7 @@ function plm_rankings($plm_season=NULL) {
   drupal_set_title("$plm_season->title Rankings");
 
   $is_member = user_access('access poker league member content');
+  $is_admin = user_access('administer poker league');
   $sid = $plm_season->sid;
   $output .= drupal_get_form('plm_ranking_season_form', $sid);
 
@@ -616,19 +614,35 @@ function plm_rankings($plm_season=NULL) {
       'data' => t('Points'),
       'class' => 'numcol',
     ),
+//     array('data' => t('Wins'),
+//       'class' => 'numcol',
+//     ),
     array('data' => t('Places'),
+      'class' => 'numcol',
+    ),
+    array('data' => t('Entries'),
+      'class' => 'numcol',
+    ),
+    array('data' => t('Place %'),
       'class' => 'numcol',
     ),
   );
   // Hide cash stats!
   if ($is_member) {
-    $header[] = array('data' => t('Winnings'));
+    $header[] = array('data' => t('$Cash'), 'class' => 'numcol');
+  }
+  if ($is_admin) {
+    $header[] = array('data' => t('$Net'), 'class' => 'numcol');
   }
     // time since last points earned
   if ($sid == $current_sid){
     $header[] = array(
-      'data' => t('Latest'),
-      'class' => 'numcol',
+      'data' => t('Last<br/>Place'),
+      'class' => 'numcol wrappable',
+    );
+    $header[] = array(
+      'data' => t('Last<br/> Played'),
+      'class' => 'numcol wrappable',
     );
   }
   $players = _plm_get_rankings($sid);
@@ -636,17 +650,18 @@ function plm_rankings($plm_season=NULL) {
     $output .= '<p>No Results Found</p>';
     return $output;
   }
-  $rank = 1;
-  $tenth      = 0;
+  $rank  = 1;
+  $tenth = 0;
+  $now = time();
   foreach ($players as $rec) {
     if ($rank == 10) {
       $tenth = $rec->points;
     }
     if ($rank <= 10){
-      $class = 'finalist';
+      $rowclass = 'finalist';
     }
     else{
-      $class = '';
+      $rowclass = '';
     }
     $rowdata = array(
       array(
@@ -660,8 +675,20 @@ function plm_rankings($plm_season=NULL) {
         'data' => $rec->points,
         'class' => 'numcol',
       ),
+//       array(
+//         'data' => $rec->wins ? $rec->wins : '',
+//         'class' => 'numcol',
+//       ),
       array(
         'data' => $rec->places ? $rec->places : '',
+        'class' => 'numcol',
+      ),
+      array(
+        'data' => $rec->entries ? $rec->entries : '',
+        'class' => 'numcol',
+      ),
+      array(
+        'data' => (($rec->entries>0)?(int)($rec->places*100/$rec->entries):0) . '%',
         'class' => 'numcol',
       ),
     );
@@ -672,6 +699,18 @@ function plm_rankings($plm_season=NULL) {
         'class' => 'numcol',
       );
     }
+    if ($is_admin) {
+      $net = $rec->cash-$rec->buyin;
+      if ($net < 0) $str = '($'.-$net.')';
+      else $str = '$' . $net;
+      $class = 'numcol';
+      if ($net < 0) $class .= ' neg';
+      if ($net > 0) $class .= ' pos';
+      $rowdata[] = array(
+        'data' => $str,
+        'class' => $class,
+      );
+    }
     // time since last points earned
     if ($sid == $current_sid){
       //if ($rec->latest_place == 0)
@@ -680,18 +719,22 @@ function plm_rankings($plm_season=NULL) {
       //if ($rec->latest_place < 7)
       //  $data = format_plural($rec->latest_place, '1 day', '@count days');
       //else
-        $data = format_plural(round($rec->latest_place/7), '1 wk', '@count wks');
-      $rowdata[] = array(
-        'data' => $data,
-        //'class' => 'narrowcol',
-        'class' => 'numcol',
-      );
+
+      //$data = format_plural(round($rec->latest_place/7), '1 wk', '@count wks');
+      if ($rec->last_place>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_place, true) ;
+      else $elapsed = '';
+      $rowdata[] = array('data' => $elapsed,'class' => 'numcol');    
+
+      if ($rec->last_date>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_date, true) ;
+      else $elapsed = '';
+      $rowdata[] = array('data' => $elapsed,'class' => 'numcol');    
+
     }
     
     $rank++;
     $rows[] = array( 
       'data'  => $rowdata, 
-      'class' => $class);
+      'class' => $rowclass);
   }
 
   $eoy_total  = _plm_get_eoy_total($plm_season, $games);
@@ -779,11 +822,13 @@ function plm_players_list($max_players_per_page=100) {
     $header[] = array('data' => t('Winnings'),
                 'class' => 'numcol',
                 'field' => 'cash' );
-    $header[] = array('data' => t('Last Played'),
-                'field' => 'last_date' );
-    $header[] = array('data' => t('Last Placed'),
-                'field' => 'last_place' );
   }
+
+  $header[] = array('data' => t('Last Played'),
+              'field' => 'last_date' );
+  $header[] = array('data' => t('Last Placed'),
+              'field' => 'last_place' );
+  
   if ($is_admin) {
     $header[] = array('data' => t(''), 'colspan' => 1);
     //popups_add_popups();
@@ -820,13 +865,15 @@ function plm_players_list($max_players_per_page=100) {
       $rowdata[] = array(
         'data' => $rec->cash ? '$' . $rec->cash : '', 
         'class' => 'numcol');    
-      if ($rec->last_date>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_date) ;
-      else $elapsed = 'Never';
-      $rowdata[] = array('data' => $elapsed);    
-      if ($rec->last_place>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_place) ;
-      else $elapsed = 'Never';
-      $rowdata[] = array('data' => $elapsed);    
     }
+
+    if ($rec->last_date>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_date) ;
+    else $elapsed = 'Never';
+    $rowdata[] = array('data' => $elapsed);    
+    if ($rec->last_place>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_place) ;
+    else $elapsed = 'Never';
+    $rowdata[] = array('data' => $elapsed);    
+
     if ($is_admin) {
       $rowdata[] = array(
         'data'  => l(t('edit'), 
@@ -1033,14 +1080,6 @@ function plm_season_load($sid) {
 function plm_seasons_list() {
   //$output .= '<h5>plm_seasons_list()</h5>';
   drupal_set_title("Poker Seasons");
-/*   $item = menu_get_item(); */
-/*   foreach($item as $x => $y){ */
-/*     print_r('<b>'); */
-/*     print_r($x); */
-/*     print_r('</b> =&gt; '); */
-/*     print_r($y); */
-/*     print_r('<br>'); */
-/*   } */
   
   $seasons = _plm_get_seasons();
   if (!isset($seasons)){
@@ -1926,27 +1965,37 @@ function plm_ranking_season_form($form_state, $selection_id = 0) {
   //drupal_set_message("plm_ranking_season_form(" . print_r($selection_id, true) .")");
   $seasons = _plm_get_seasons();
   if (!isset($seasons) || count($seasons) < 2) return NULL;
-
+  //drupal_set_message('<pre>'.print_r($form_state, true).'</pre>');
   $options = array();//(0 => ' Select a season');
   foreach ($seasons as $s) {
     $label = $s->title;
     //if ($s->sid == $selection_id) $label = "<b>$label</b>";
     $options[$s->sid] = $label;//$s->title;
   }
+
+  $submit_js = "document.getElementById('plm-ranking-season-form').submit();";
   $form['season_sel'] = array(
      '#type'          => 'select',
      '#default_value' => $selection_id,
      '#options'       => $options,
+     '#attributes' => array(
+       'onChange' => $submit_js, 
+       'style' => 'display: inline',
+     ),
   );
-  $form['season_submit'] = array(
-    '#type'           => 'submit',
-    '#value'          => 'Go',
-  );
+   $form['season_submit'] = array(
+     '#type'           => 'submit',
+     '#value'          => 'Go',
+     '#attributes' => array('style' => 'display: none;'),
+    );
   return $form;
+}
+function plm_ranking_season_form_verify($form, &$form_state) {
+
 }
 
 function plm_ranking_season_form_submit($form, &$form_state) {
-  $op = $form_state['values']['op'];
+  //$op = $form_state['values']['op'];
   $sid = $form_state['values']['season_sel'];
   $season = _plm_get_season($sid);
   //drupal_set_message('Selected ' . $season->title);

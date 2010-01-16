@@ -18,18 +18,31 @@ function _plm_format_place($place) {
   }
   return $place . $suffix;
 }
-function _plm_format_time_elapsed($seconds) {
+function _plm_format_time_elapsed($seconds, $short_form=false) {
     $days = (int) ($seconds / (60*60*24));
-    if ($days < 7) return format_plural($days, '1 day',  "@count days");
+    if ($days < 7){
+        $str1 = $short_form ? 'Day' : 'day';
+        $strn = $short_form ? 'Dys' : 'days';
+        return format_plural($days, "1 $str1",  "@count $strn");
+    }
+
     $weeks = (int) ($days / 7);
-    if ($weeks < 8) return format_plural($weeks, '1 week',  "@count weeks");
+    if ($weeks < 8) {
+        $str1 = $short_form ? 'Wk' : 'week';
+        $strn = $short_form ? 'Wks' : 'weeks';
+        return format_plural($weeks, "1 $str1",  "@count $strn");
+    }
     $months = (int) ($weeks / 4);
-    if ($months < 12) return format_plural($months, '1 month',  "@count months");
+    if ($months < 12) {
+        $str1 = $short_form ? 'Mo' : 'month';
+        $strn = $short_form ? 'Mos' : 'months';
+        return format_plural($months, "1 $str1",  "@count $strn");
+    }
     $years  = (int) ($weeks / 52);
     $months %= 12;
-    $elapsed = format_plural($years, '1 yr', '@count yr');
-    if ($months)
-        $elapsed .= ' ' . format_plural($months, '1 m', '@count m');
+
+    $elapsed = format_plural($years, '1 Yr', '@count Yr');
+    if ($months) $elapsed .= " $months m";
     return $elapsed;    
 }
 

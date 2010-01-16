@@ -59,21 +59,37 @@ function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
 }
 
 function _plm_get_rankings($sid, $limit = NULL) {
-  $sort_phrase = "ORDER BY points DESC, cash DESC, places DESC, 
-  latest_place DESC, name NULLS LAST";
+  $sort_phrase = "ORDER BY points DESC NULLS LAST, cash DESC NULLS LAST, places DESC NULLS LAST, 
+  last_place DESC NULLS LAST, name NULLS LAST";
   if ($limit) $sort_phrase .= " LIMIT $limit";
+//   $sql = "SELECT p.pid, p.name, g.sid,
+//     SUM(points) AS points, SUM(cash) AS cash, 
+//     COUNT(points) AS places, 
+//     EXTRACT('epoch' FROM 
+//       DATE_TRUNC('day', NOW()) - DATE_TRUNC( 'day', 
+//       (TIMESTAMP 'epoch' + MAX(g.game_date) * INTERVAL '1 second'))
+//     )/86400 
+//     AS latest_place,
+//     date_trunc('day', NOW() - DATE_TRUNC( 'day', (TIMESTAMP WITH TIME ZONE 'epoch' + MAX(g.game_date) * INTERVAL '1 second'))) AS latest_interval
+//     FROM {plm_player} p
+//     LEFT JOIN {plm_entrant} 
+//     LEFT JOIN {plm_result} r ON p.pid=r.pid 
+//     JOIN {plm_game} g ON r.gid=g.gid
+//     WHERE g.sid=%d
+//     GROUP BY g.sid,p.pid, p.name " . $sort_phrase ; 
   $sql = "SELECT p.pid, p.name, g.sid,
-    SUM(points) AS points, SUM(cash) AS cash, 
-    COUNT(points) AS places, 
-    EXTRACT('epoch' FROM 
-      DATE_TRUNC('day', NOW()) - DATE_TRUNC( 'day', 
-      (TIMESTAMP 'epoch' + MAX(g.game_date) * INTERVAL '1 second'))
-    )/86400 
-    AS latest_place,
-    date_trunc('day', NOW() - DATE_TRUNC( 'day', (TIMESTAMP WITH TIME ZONE 'epoch' + MAX(g.game_date) * INTERVAL '1 second'))) AS latest_interval
-    FROM {plm_player} p LEFT JOIN {plm_result} r ON p.pid=r.pid 
-    JOIN {plm_game} g ON r.gid=g.gid
-    WHERE g.sid=%d
+    Sum(points) AS points, Sum(cash) AS cash, 
+    Count(points) AS places, 
+    Sum(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins,
+    Max(g.game_date) as last_date,
+    Max(CASE WHEN r.points > 0 THEN g.game_date ELSE NULL END) as last_place,
+    Count(e.entid) as entries,
+    Sum(g.buyin) as buyin
+    FROM {plm_game} g
+    LEFT JOIN {plm_entrant} e ON e.gid=g.gid
+    LEFT JOIN {plm_player} p ON p.pid = e.pid
+    LEFT JOIN {plm_result} r ON p.pid=r.pid AND r.gid=g.gid
+    WHERE g.finished != 0 AND g.sid=%d
     GROUP BY g.sid,p.pid, p.name " . $sort_phrase ; 
   $result = db_query($sql, $sid);
   $list = array();
