@@ -317,6 +317,14 @@ function plm_update_6002() {
       'not null' => FALSE));
   return $ret;
 }
+
+function plm_update_6003() {
+  $ret = array();
+  $sql = 'INSERT INTO {plm_entrant} (gid, pid) SELECT r.gid,r.pid FROM {plm_result} r 
+            EXCEPT SELECT e.gid, e.pid FROM {plm_entrant} e';
+  $ret[] = update_sql($sql);
+  return $ret;
+}
 function plm_uninstall() {
   db_query("DELETE FROM {menu_custom} WHERE menu_name = 'plm'");
   db_query("DELETE FROM {menu_links} WHERE module = 'plm'");
