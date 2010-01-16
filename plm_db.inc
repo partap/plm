@@ -33,7 +33,8 @@ function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
   $sql = "SELECT p.pid, p.name, p.uid,
           SUM(points) AS points, SUM(cash) AS cash, COUNT(points) AS places,
           SUM(CASE WHEN r.place=1 THEN 1 ELSE 0 END) AS wins,
-          Max(g.game_date) as last_date
+          Max(g.game_date) as last_date,
+          Max(CASE WHEN r.place > 0 THEN g.game_date ELSE NULL END) as last_place
           FROM {plm_game} g
           LEFT JOIN {plm_entrant} e ON e.gid=g.gid
           LEFT JOIN {plm_player} p ON p.pid = e.pid

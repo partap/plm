@@ -27,9 +27,9 @@ function _plm_format_time_elapsed($seconds) {
     if ($months < 12) return format_plural($months, '1 month',  "@count months");
     $years  = (int) ($weeks / 52);
     $months %= 12;
-    $elapsed = format_plural($years, '1 year', '@count years');
+    $elapsed = format_plural($years, '1 yr', '@count yr');
     if ($months)
-        $elapsed .= ', ' . format_plural($months, '1 month', '@count months');
+        $elapsed .= ' ' . format_plural($months, '1 m', '@count m');
     return $elapsed;    
 }
 

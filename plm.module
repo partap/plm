@@ -781,6 +781,8 @@ function plm_players_list($max_players_per_page=100) {
                 'field' => 'cash' );
     $header[] = array('data' => t('Last Played'),
                 'field' => 'last_date' );
+    $header[] = array('data' => t('Last Placed'),
+                'field' => 'last_place' );
   }
   if ($is_admin) {
     $header[] = array('data' => t(''), 'colspan' => 1);
@@ -797,16 +799,18 @@ function plm_players_list($max_players_per_page=100) {
     $resnum++;
     $username = '';
 
+    $display_name = $rec->name;
     if ($is_admin) {
       $player_user = $rec->uid ? user_load($rec->uid) : NULL;
       //drupal_set_message("$rec->name: $rec->uid ($player_user->name)");
       if ($player_user) {
         $username = " ($player_user->name)";
+        $display_name = '<span class="member">'.$display_name.'</span>';
       }
     }
     $rowdata = array(
       array('data' => $resnum, 'class' => 'numcol',),
-      l($rec->name, 'plm/players/pid/' . $rec->pid) . $username,
+      l($display_name, 'plm/players/pid/' . $rec->pid,array('html' => true)),
       array('data' => $rec->wins, 'class' => 'numcol'),
       array('data' => $rec->places ? $rec->places : '0', 'class' => 'numcol'),
       array('data' => $rec->points,'class' => 'numcol'),
@@ -817,10 +821,11 @@ function plm_players_list($max_players_per_page=100) {
         'data' => $rec->cash ? '$' . $rec->cash : '', 
         'class' => 'numcol');    
       if ($rec->last_date>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_date) ;
-      else $elapsed = 'unknown';
-      $rowdata[] = array(
-          'data' => $elapsed,
-      );    
+      else $elapsed = 'Never';
+      $rowdata[] = array('data' => $elapsed);    
+      if ($rec->last_place>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_place) ;
+      else $elapsed = 'Never';
+      $rowdata[] = array('data' => $elapsed);    
     }
     if ($is_admin) {
       $rowdata[] = array(
