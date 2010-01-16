@@ -622,11 +622,11 @@ function plm_rankings($plm_season=NULL) {
   if ($sid == $current_sid){
     $header[] = array(
       'data' => t('Last<br/>Place'),
-      'class' => 'numcol wrappable',
+      'class' => 'narrowcol',
     );
     $header[] = array(
       'data' => t('Last<br/> Played'),
-      'class' => 'numcol wrappable',
+      'class' => 'narrowcol wrappable',
     );
   }
   $players = _plm_get_rankings($sid);
@@ -695,28 +695,16 @@ function plm_rankings($plm_season=NULL) {
 
     // time since last points earned
     if ($sid == $current_sid){
-      //if ($rec->latest_place == 0)
-      //  $data = format_plural($rec->latest_place, '1 day', '@count days');
-      //else
-      //if ($rec->latest_place < 7)
-      //  $data = format_plural($rec->latest_place, '1 day', '@count days');
-      //else
-
-      //$data = format_plural(round($rec->latest_place/7), '1 wk', '@count wks');
       if ($rec->last_place>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_place, true) ;
       else $elapsed = '';
-      $rowdata[] = array('data' => $elapsed,'class' => 'numcol');    
+      $rowdata[] = array('data' => $elapsed,'class' => 'narrowcol');    
 
-      if ($rec->last_date>0) $elapsed = _plm_format_time_elapsed($now-$rec->last_date, true) ;
+      if ($rec->last_date > 0) $elapsed = _plm_format_time_elapsed($now-$rec->last_date, true) ;
       else $elapsed = '';
-      $rowdata[] = array('data' => $elapsed,'class' => 'numcol');    
-
+      $rowdata[] = array('data' => $elapsed,'class' => 'narrowcol');    
     }
-    
     $rank++;
-    $rows[] = array( 
-      'data'  => $rowdata, 
-      'class' => $rowclass);
+    $rows[] = array( 'data'  => $rowdata, 'class' => $rowclass);
   }
 
   $eoy_total  = _plm_get_eoy_total($plm_season, $games);

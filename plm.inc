@@ -103,13 +103,13 @@ function _plm_rules_default_payout($game, $place) {
 
 function _plm_get_est_cutoff_points($plm_season, $tenth) {
   $num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
-  $num_games_total    = _plm_get_season_num_games($plm_season);
+  $num_games_total    = _plm_get_num_games($plm_season->sid);
   return round($tenth*$num_games_total/$num_games_finished);
 }
 
 function _plm_get_eoy_est($plm_season, $eoy_total) {
   $num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
-  $num_games_total    = _plm_get_season_num_games($plm_season);
+  $num_games_total    = _plm_get_num_games($plm_season->sid);
   return round($eoy_total*$num_games_total/$num_games_finished);
 }
 
@@ -126,14 +126,14 @@ function _plm_get_eoy_total($plm_season) {
 }
 
 // Temporarily hardcoded
-function _plm_get_season_num_games($plm_season) {
-  switch ($plm_season->title) {
-    case 'Season 5': 
-    case 'Season 6': 
-    case 'Season 7': 
-      return 26;
-    default:
-      return 0;
-  }
-}
+//function _plm_get_season_num_games($plm_season) {
+//   switch ($plm_season->title) {
+//     case 'Season 5': 
+//     case 'Season 6': 
+//     case 'Season 7': 
+//       return 26;
+//     default:
+//       return 26;
+//   }
+//}
 
