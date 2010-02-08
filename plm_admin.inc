@@ -1382,7 +1382,7 @@ function plm_entrant_delete($entid) {
   return _plm_delete_entrant($entid);
 }
 
-function plm_payouts($payid=0) {
+function plm_payout_editor($payid=0) {
   //drupal_set_message('plm_payset_editor()');
   $is_admin = user_access('administer poker league');
   if (!$payid) $payid = variable_get('plm_default_payset', 0);
@@ -1505,60 +1505,25 @@ function plm_payouts($payid=0) {
 } 
 
 
-function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
-  
-  $payid = $payset->payid;
-  if (!isset($payid)) $payid = 0;
-  //drupal_set_message("payid: $payid");
-  $options = array(0 => 'Select a Payout');
-  if ($recs) {
-    foreach ($recs as $item) {
-      $options[$item->payid] = $item->title;
-    }
-    //$output .= theme('item_list', $list, 'Payouts');
-  }
-  $submit_js = "document.getElementById('plm-select-payset-form').submit();";
-  $form['payset_sel'] = array(
-    '#type' => 'select',
-    '#default_value' => $payid,
-    '#options' => $options,
-    '#attributes' => array(
-      'onChange' => $submit_js, 
-      'style' => 'display: inline',
-    ),
-  );
-  $form['submit'] = array(
-    '#type' => 'submit',
-    '#value' => 'Set Default',
-    '#attributes' => array('style' => 'display: inline')
-  );
-  return $form;
-}
-function plm_select_payset_form_submit($form, &$form_state) {
-  $payid = $form_state['values']['payset_sel'];
-  if ($form_state['op'] == 'Set Default') variable_set('plm_default_payout', $payid);
-  $form_state['redirect'] = "admin/plm/payout/edit/$payid";
-}
-
 function plm_edit_payset_form(&$form_state, $oldrec=NULL) {
   
-   if (isset($oldrec)){
-     $form['payid'] = array(
-       '#type' => 'hidden',
-       '#value' => $oldrec->payid,
+  if (isset($oldrec)){
+    $form['payid'] = array(
+      '#type' => 'hidden',
+      '#value' => $oldrec->payid,
      );
-   }
- 
+  }
+  
   $form['title'] = array(
-     '#type' => 'textfield',
-     '#title' => t('Title'),
+    '#type' => 'textfield',
+    '#title' => t('Title'),
      '#required' => TRUE,
-     '#default_value' => $oldrec->title,
-     '#size' => 32,
-     '#maxlength' => 32,
-     '#weight' => -5
+    '#default_value' => $oldrec->title,
+    '#size' => 32,
+    '#maxlength' => 32,
+    '#weight' => -5
   );
-
+  
   $form['buyin'] = array(
     '#type' => 'textfield',
     '#title' => t('Buy-in'),
@@ -1617,7 +1582,7 @@ function plm_edit_payset_form_submit($form, &$form_state) {
   else
     _plm_update_payset($rec);
   if ($form_state['values']['op'] == 'Generate Payouts') $gen_rules = true;
-
+  
   if ($gen_rules){
     for ($num_players=10;$num_players<=36;$num_players++) {
       if ($num_players < 20) $num_places = 4;
@@ -1625,13 +1590,11 @@ function plm_edit_payset_form_submit($form, &$form_state) {
       $payrules = _plm_generate_payrules($num_players, $num_places, $rec->buyin, $rec->pot_bonus);
       _plm_delete_payrules($payid, $num_players);
       foreach ($payrules as $place => $amount) {
-        //drupal_set_message("Adding payrule: $payid, $num_players, $place, $amount");
         _plm_insert_payrule($rec->payid, $num_players, $place, $amount);
       }
     }
   }
   $form_state['redirect'] = "admin/plm/payout/edit/$rec->payid";
-  //$form_state['redirect'] = "admin/plm/payout/edit/$payid";
 }
 
 function plm_payout_confirm_delete(&$form_data,$payid) {
@@ -1648,7 +1611,6 @@ function plm_payout_confirm_delete(&$form_data,$payid) {
 
 function plm_payout_confirm_delete_submit($form, &$form_state) {
   $payid       = $form_state['values']['payid'];
-  //drupal_set_message("payid: $payid, num_players: $num_players");
   _plm_delete_payset($payid);
   $form_state['redirect'] = "admin/plm/payout/list";
 }
@@ -1715,12 +1677,6 @@ function plm_payrule_form(&$form_data, $payid, $num_players, $place, $payset=NUL
     '#weight' => 2000,
   );
 
-  // $form['cancel'] = array(
-  //   '#type' => 'submit',
-  //   '#value' => 'Cancel',
-  //   '#submit' => array('plm_cancel_form'),
-  //   '#weight' => 1001,
-  // );
   $form['delete'] = array(
     '#type' => 'submit',
     '#value' => 'Delete',
@@ -1744,18 +1700,13 @@ function plm_payrule_form_submit($form, &$form_state) {
   //drupal_set_message("plm_payrule_form_submit($payid, $num_players, $place, $amount)");
   $rec = _plm_get_payrule($payid, $num_players, $place);
   if ($rec){ 
-    //drupal_set_message('updating');
    _plm_update_payrule($payid, $num_players, $place, $amount);
   }
   else {
-    // drupal_set_message('inserting');
     _plm_insert_payrule($payid, $num_players, $place, $amount);
   }
 }
 
-function plm_cancel_form($form, &$form_state) {
-  //drupal_set_message("plm_cancel_form()");
-}
 
 function plm_payrule_delete_form($form, &$form_state) {
   $payid       = $form_state['values']['payid'];

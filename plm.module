@@ -131,7 +131,6 @@ function plm_menu() {
     //'type' => MENU_NORMAL_ITEM,
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   ); 
   $items['plm/seasons/%plm_season/delete'] = array(
     'title' => t('Delete'),
@@ -139,7 +138,6 @@ function plm_menu() {
     'page arguments' => array('plm_season_confirm_delete', 2),
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
-    'file' => 'plm_admin.inc',
   ); 
   $items['plm/seasons/%plm_season/rankings'] = array(
     'title' => t('Rankings'),
@@ -157,7 +155,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
 
 
@@ -184,7 +181,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
   $items['plm/games/%plm_game/entrants'] = array(
     'title' => t('Entrants'),
@@ -213,7 +209,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
   $items['plm/entrants/%plm_entrant/edit'] = array(
     'title' => t('Edit'),
@@ -223,7 +218,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
 
   $items['plm/entrants/%plm_entrant/delete'] = array(
@@ -234,7 +228,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
 
   $items['plm/entrants/%plm_entrant/confirm_delete'] = array(
@@ -245,7 +238,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
 
 
@@ -272,7 +264,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
   $items['plm/players/pid/%plm_player'] = array(
     'title' => t('Player'),
@@ -300,7 +291,6 @@ function plm_menu() {
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
 //    'type' => MENU_CALLBACK,
-    'file' => 'plm_admin.inc',
   );
   $items['plm/players/pid/%plm_player/delete'] = array(
     'title' => t('Delete'),
@@ -310,7 +300,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'menu_name' => 'plm',
-    'file' => 'plm_admin.inc',
   );
   $items['plm/results/%plm_result/%/edit'] = array(
     'title' => t('Edit'),
@@ -331,7 +320,6 @@ function plm_menu() {
     'page arguments' => array('plm_result_confirm_delete', 2),
    'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
-    'file' => 'plm_admin.inc',
     'menu_name' => 'plm',
   );
   $items['plm/rankings'] = array(
@@ -358,7 +346,6 @@ function plm_menu() {
     'page callback' => 'plm_payouts',
     'access arguments' => array('access poker league member content'),
     'type' => MENU_NORMAL_ITEM,
-    'file' => 'plm_admin.inc',
   );
   $items['plm/ajax'] = array(
     'title' => 'Ajax Popup response URL',
@@ -376,7 +363,6 @@ function plm_menu() {
     'access arguments' => array('administer poker league'),
     'type' => MENU_NORMAL_ITEM,
     'weight' => -11,
-    'file' => 'plm_admin.inc',
   );  
   $items['admin/plm/settings'] = array(
     'title' => 'Settings',
@@ -385,7 +371,6 @@ function plm_menu() {
     'page arguments' => array('plm_settings'),
     'access arguments' => array('administer poker league'),
     'type' => MENU_NORMAL_ITEM,
-    'file' => 'plm_admin.inc',
   );
   $items['admin/plm/import'] = array(
     'title' => t('Import Results'),
@@ -399,15 +384,13 @@ function plm_menu() {
   $items['admin/plm/payout'] = array(
     'title' => t('Payout Editor'),
     'description' => 'View or edit payout structures',
-    'page callback' => 'plm_payouts',
+    'page callback' => 'plm_payout_editor',
     'access arguments' => array('administer poker league'),
     'type' => MENU_NORMAL_ITEM,
-    'file' => 'plm_admin.inc',
   );
   $items['admin/plm/payout/list'] = array(
     'title' => t('List Payouts'),
     'type' => MENU_DEFAULT_LOCAL_TASK,
-    'file' => 'plm_admin.inc',
   );
 
   $items['admin/plm/payout/new'] = array(
@@ -417,7 +400,6 @@ function plm_menu() {
     'page arguments' => array('plm_edit_payset_form'),
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
-    'file' => 'plm_admin.inc',
   );
   $items['admin/plm/payout/edit'] = array(
     'title' => t('Payout'),
@@ -426,7 +408,6 @@ function plm_menu() {
     //'page arguments' => array(4),
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
-    'file' => 'plm_admin.inc',
   );
 
   $items['admin/plm/payout/delete/%'] = array(
@@ -436,7 +417,6 @@ function plm_menu() {
     'page arguments' =>array('plm_payout_confirm_delete',4),
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
-    'file' => 'plm_admin.inc',
   );
 
   $items['admin/plm/payout/delrow/%/%'] = array(
@@ -446,7 +426,6 @@ function plm_menu() {
     'page arguments' => array('plm_payout_delete_row',4,5),
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
-    'file' => 'plm_admin.inc',
   );
 
   $items['admin/plm/payout/addrow/%'] = array(
@@ -456,7 +435,6 @@ function plm_menu() {
     'page arguments' => array('plm_payout_add_row_form',4),
     'access arguments' => array('administer poker league'),
     'type' => MENU_CALLBACK,
-    'file' => 'plm_admin.inc',
   );
 
   $items['admin/plm/payrule/%/%/%/edit'] = array(
@@ -466,7 +444,6 @@ function plm_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_payrule_form', 3, 4, 5),
     'access arguments' => array('administer poker league'),
-    'file' => 'plm_admin.inc',
     'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
   );
@@ -477,7 +454,6 @@ function plm_menu() {
     'page callback' => 'drupal_get_form',
     'page arguments' => array('plm_payrule_delete_form', 3, 4, 5),
     'access arguments' => array('administer poker league'),
-    'file' => 'plm_admin.inc',
     'type' => MENU_CALLBACK,
     'menu_name' => 'plm',
   );
@@ -486,26 +462,22 @@ function plm_menu() {
     'title' => 'update payout',
     'page callback' => 'plm_ajax_payout_load',
     'access arguments' => array('administer poker league'),
-    'file' => 'plm_admin.inc',
     'type' => MENU_CALLBACK,
   );
   $items['admin/plm/ajax/payout/save'] = array(
     'title' => 'update payout',
     'page callback' => 'plm_ajax_payout_save',
     'access arguments' => array('administer poker league'),
-    'file' => 'plm_admin.inc',
     'type' => MENU_CALLBACK,
   );
   $items['plm/ajax/add_entrant'] = array(
       'page callback' => 'plm_ajax_add_entrant', 
       'access arguments' => array('administer poker league'),
-      'file' => 'plm_admin.inc',
       'type' => MENU_CALLBACK,
   );
   $items['plm/ajax/del_entrant'] = array(
       'page callback' => 'plm_ajax_del_entrant', 
       'access arguments' => array('administer poker league'),
-      'file' => 'plm_admin.inc',
       'type' => MENU_CALLBACK,
   );
   return $items;
@@ -1595,7 +1567,7 @@ function plm_theme($existing, $type, $theme, $path) {
     ),
     'plm_entrants_form' => array(
       'arguments' => array('form' => NULL),
-      'file' => 'plm_admin.inc'),
+    ),
   );
 }
 
@@ -1979,4 +1951,165 @@ function plm_ranking_season_form_submit($form, &$form_state) {
   //drupal_set_message('Selected ' . $season->title);
   //$_SESSION['ranking_sid'] = $sid;
   $form_state['redirect'] = "plm/seasons/$sid/rankings";
+}
+
+
+function plm_payouts($payid=0) {
+  $is_admin = user_access('administer poker league');
+  if (!$payid) $payid = variable_get('plm_default_payset', 0);
+  if ($payid) {
+    $payset = _plm_get_payset($payid);
+  }
+  
+  $recs = _plm_get_paysets();
+  $output .= drupal_get_form('plm_select_payset_form', $recs, $payset);
+  if ($payset)
+    $output .= drupal_get_form('plm_edit_payset_form', $payset);
+
+  if ($payset) {
+    $add_button = l('Add Payout', "admin/plm/payout/addrow/$payid/10");
+    $output .= "<div>$add_button</div>";
+    $payrules = _plm_get_payrules($payset->payid);
+    if ($payrules) {
+      $path = drupal_get_path('module', 'plm');
+
+      drupal_add_js("$path/js/jquery.jeditable.js");
+      drupal_add_js(array('plm' => array(
+            'modulePath' => $path,
+          )), 'setting');
+      drupal_add_js("$path/js/plm.js");
+
+      $dstr = '';
+      $max_places = 0;
+      $headers = array('Plyrs', 'Pot');
+      $num_headers = count($headers);
+      $num_places = array();
+      foreach ($payrules as $rule) {
+
+        $row_index = $rule->num_players;
+        $place_index = $rule->place + $num_headers-1;
+        $num_places[$rule->num_players]++;
+        $rowdata[$row_index][0] = array(
+          'data' => $rule->num_players,
+          'header' => true
+        );
+        $rowdata[$row_index][1] = array(
+          'data' =>$rule->num_players * $payset->buyin + $payset->pot_bonus,
+          'class' => 'rowtotal',
+          'header' => true,
+        );
+        $rowdata[$row_index][$place_index] = array('data' => $rule->amount, 'class' => 'rowval');
+        $headers[$place_index] = _plm_format_place($rule->place);
+        if ($rule->place > $max_places) $max_places = $rule->place;        
+      }
+      $this_uri = request_uri();
+      foreach ($rowdata as $rownum => $row) {
+        $num_players = $row[0]['data'];
+        $total = $payset->pot_bonus;
+        for ($i=$num_headers; $i <= $max_places+$num_headers; $i++) {
+          $place=$i-$num_headers+1;
+          if (!$row[$i]['data']) $rowdata[$rownum][$i] = array('data' => '---', 'class' => 'rowval') ;
+          else $total += $row[$i]['data'];
+          $rowdata[$rownum][$i] = array(
+            'data' => $rowdata[$rownum][$i]['data'],
+            'class' => $rowdata[$rownum][$i]['class'] . ' edit', 
+            'id' => "payout-$payset->payid-$num_players-$place",
+          );
+
+        }
+        if ($total == $row[1]['data']) {
+          $rowdata[$rownum][$max_places+$num_headers+1] = array('class' => 'rowchecksum');
+        }
+        else{
+          $rowdata[$rownum][$max_places+$num_headers+1] = array( 'data' => $row[1]['data']-$total,
+                                                          'class' => 'rowchecksum');
+        }
+        ksort($rowdata[$rownum], SORT_NUMERIC);
+      }
+      $headers[$max_places+$num_headers] = array(
+        'data' => _plm_format_place($max_places+1),
+        'class' => 'table-cmd'
+      );
+      ksort($headers, SORT_NUMERIC);
+
+      $curr_uri = check_plain(request_uri());
+      
+      $addcmd = array();
+      foreach($rowdata as $i => $row) {
+        $nexti = $i+1;
+        if (!isset($rowdata[$nexti])){
+          $num_players = $row[0]['data'];
+          $places = $num_places[$num_players];
+          $addcmd[$nexti] = l('add',  "admin/plm/payout/addrow/$payid/$nexti/$places",
+                  array('query' => array("destination" => $curr_uri)));
+        }
+      }
+      array_unshift($headers, '');
+      foreach($rowdata as $i => $row) {
+        $delcmd =  l('del', "admin/plm/payout/delrow/$payid/$row[0]",
+                array('query' => array("destination" => $curr_uri)));
+        array_unshift($rowdata[$i],
+          array(
+            'data' => "$delcmd",
+            'class' => 'table-cmd'
+          ));
+      }
+      foreach($addcmd as $newi => $cmd) {
+        $rowdata[$newi][] = array(
+          'data' => $cmd,
+          'class' => 'table-cmd',
+        );
+        $rowdata[$newi][] = array('data' => $newi, 'header' => true);
+      }
+      ksort($rowdata, SORT_NUMERIC);
+      $attr = array(
+        'class' => 'numgrid',
+        'id' => 'payouts'
+      );
+      $output .= '<div class="scroll-wrapper">';
+      $output .= theme('table', $headers, $rowdata, $attr, $caption);
+      $output .= '</div>';
+    }
+    
+  }
+  return $output;
+} 
+
+
+function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
+  
+  $is_admin = user_access('administer poker league');
+  $payid = $payset->payid;
+  if (!isset($payid)) $payid = 0;
+  //drupal_set_message("payid: $payid");
+  $options = array(0 => 'Select a Payout');
+  if ($recs) {
+    foreach ($recs as $item) {
+      $options[$item->payid] = $item->title;
+    }
+  }
+  $submit_js = "if (\$('#edit-payset-sel').val() != 0) { document.getElementById('plm-select-payset-form').submit(); }";
+  $form['payset_sel'] = array(
+    '#type' => 'select',
+    '#default_value' => $payid,
+    '#options' => $options,
+    '#attributes' => array(
+      'onChange' => $submit_js, 
+      'style' => 'display: inline',
+    ),
+  );
+
+  if ($is_admin) {
+      $form['submit'] = array(
+          '#type' => 'submit',
+          '#value' => 'Set Default',
+          '#attributes' => array('style' => 'display: inline')
+      );
+  }
+  return $form;
+}
+function plm_select_payset_form_submit($form, &$form_state) {
+  $payid = $form_state['values']['payset_sel'];
+  if ($form_state['op'] == 'Set Default') variable_set('plm_default_payout', $payid);
+  $form_state['redirect'] = "admin/plm/payout/edit/$payid";
 }
