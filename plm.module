@@ -340,7 +340,7 @@ function plm_menu() {
     'weight' => 1,
     'menu_name' => 'plm',
   );
-  $items['plm/payouts'] = array(
+  $items['plm/payout'] = array(
     'title' => t('Payouts'),
     'description' => 'View payout structures',
     'page callback' => 'plm_payouts',
@@ -1568,6 +1568,9 @@ function plm_theme($existing, $type, $theme, $path) {
     'plm_entrants_form' => array(
       'arguments' => array('form' => NULL),
     ),
+    'plm_payset' => array(
+        'arguments' => array('plm_payset' => NULL)
+    ),
   );
 }
 
@@ -1956,6 +1959,9 @@ function plm_ranking_season_form_submit($form, &$form_state) {
 
 function plm_payouts($payid=0) {
   $is_admin = user_access('administer poker league');
+  $is_admin = false;
+  $curr_uri = check_plain(request_uri());
+
   if (!$payid) $payid = variable_get('plm_default_payset', 0);
   if ($payid) {
     $payset = _plm_get_payset($payid);
@@ -1963,29 +1969,21 @@ function plm_payouts($payid=0) {
   
   $recs = _plm_get_paysets();
   $output .= drupal_get_form('plm_select_payset_form', $recs, $payset);
-  if ($payset)
-    $output .= drupal_get_form('plm_edit_payset_form', $payset);
+  if ($payset){
+      //$output .= drupal_get_form('plm_edit_payset_form', $payset);
+      $output .= theme('plm_payset', $payset);
+  }
 
   if ($payset) {
-    $add_button = l('Add Payout', "admin/plm/payout/addrow/$payid/10");
-    $output .= "<div>$add_button</div>";
     $payrules = _plm_get_payrules($payset->payid);
     if ($payrules) {
       $path = drupal_get_path('module', 'plm');
-
-      drupal_add_js("$path/js/jquery.jeditable.js");
-      drupal_add_js(array('plm' => array(
-            'modulePath' => $path,
-          )), 'setting');
-      drupal_add_js("$path/js/plm.js");
-
       $dstr = '';
       $max_places = 0;
       $headers = array('Plyrs', 'Pot');
       $num_headers = count($headers);
       $num_places = array();
       foreach ($payrules as $rule) {
-
         $row_index = $rule->num_players;
         $place_index = $rule->place + $num_headers-1;
         $num_places[$rule->num_players]++;
@@ -2006,66 +2004,18 @@ function plm_payouts($payid=0) {
       foreach ($rowdata as $rownum => $row) {
         $num_players = $row[0]['data'];
         $total = $payset->pot_bonus;
-        for ($i=$num_headers; $i <= $max_places+$num_headers; $i++) {
+        for ($i=$num_headers; $i < $max_places+$num_headers; $i++) {
           $place=$i-$num_headers+1;
           if (!$row[$i]['data']) $rowdata[$rownum][$i] = array('data' => '---', 'class' => 'rowval') ;
           else $total += $row[$i]['data'];
-          $rowdata[$rownum][$i] = array(
-            'data' => $rowdata[$rownum][$i]['data'],
-            'class' => $rowdata[$rownum][$i]['class'] . ' edit', 
-            'id' => "payout-$payset->payid-$num_players-$place",
-          );
-
+          
         }
-        if ($total == $row[1]['data']) {
+        if ($total != $row[1]['data']) {
           $rowdata[$rownum][$max_places+$num_headers+1] = array('class' => 'rowchecksum');
+          ksort($rowdata[$rownum], SORT_NUMERIC);
         }
-        else{
-          $rowdata[$rownum][$max_places+$num_headers+1] = array( 'data' => $row[1]['data']-$total,
-                                                          'class' => 'rowchecksum');
-        }
-        ksort($rowdata[$rownum], SORT_NUMERIC);
       }
-      $headers[$max_places+$num_headers] = array(
-        'data' => _plm_format_place($max_places+1),
-        'class' => 'table-cmd'
-      );
-      ksort($headers, SORT_NUMERIC);
-
-      $curr_uri = check_plain(request_uri());
       
-      $addcmd = array();
-      foreach($rowdata as $i => $row) {
-        $nexti = $i+1;
-        if (!isset($rowdata[$nexti])){
-          $num_players = $row[0]['data'];
-          $places = $num_places[$num_players];
-          $addcmd[$nexti] = l('add',  "admin/plm/payout/addrow/$payid/$nexti/$places",
-                  array('query' => array("destination" => $curr_uri)));
-        }
-      }
-      array_unshift($headers, '');
-      foreach($rowdata as $i => $row) {
-        $delcmd =  l('del', "admin/plm/payout/delrow/$payid/$row[0]",
-                array('query' => array("destination" => $curr_uri)));
-        array_unshift($rowdata[$i],
-          array(
-            'data' => "$delcmd",
-            'class' => 'table-cmd'
-          ));
-      }
-      foreach($addcmd as $newi => $cmd) {
-        $rowdata[$newi][] = array(
-          'data' => $cmd,
-          'class' => 'table-cmd',
-        );
-        $rowdata[$newi][] = array('data' => $newi, 'header' => true);
-      }
-      ksort($rowdata, SORT_NUMERIC);
-      $attr = array(
-        'class' => 'numgrid',
-        'id' => 'payouts'
-      );
       $output .= '<div class="scroll-wrapper">';
       $output .= theme('table', $headers, $rowdata, $attr, $caption);
       $output .= '</div>';
@@ -2100,16 +2050,45 @@ function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
   );
 
   if ($is_admin) {
-      $form['submit'] = array(
-          '#type' => 'submit',
-          '#value' => 'Set Default',
-          '#attributes' => array('style' => 'display: inline')
-      );
+    $form['submit'] = array(
+      '#type' => 'submit',
+      '#value' => 'Set Default',
+      '#attributes' => array('style' => 'display: inline')
+    );
   }
   return $form;
 }
 function plm_select_payset_form_submit($form, &$form_state) {
+  drupal_set_message('request_uri = ' . request_uri());
   $payid = $form_state['values']['payset_sel'];
   if ($form_state['op'] == 'Set Default') variable_set('plm_default_payout', $payid);
-  $form_state['redirect'] = "admin/plm/payout/edit/$payid";
+  //$target = preg_replace('/^//', '', request_uri());
+  $target = request_uri();
+  $target = ltrim(preg_replace('/\/[\d]+$/', '', $target), '/');
+
+   if ($payid > 0) $target = $target . "/$payid";
+  
+  drupal_set_message('target = ' . $target);
+  $form_state['redirect'] = $target;
+  //$form_state['redirect'] = "admin/plm/payout/edit/$payid";
 }
+
+function theme_plm_payset($payset=NULL) {
+  if (!$payset) return '';
+  $output .= '<div>';
+  $output .= '<h3>Title</h3>';
+  $output .= $payset->title;
+  $output .= '</div>';
+  $output .= '<div>';
+  $output .= '<h3>Buy-in</h3>';
+  $output .= $payset->buyin;
+  $output .= '</div>';
+  if ($payset->pot_bonus > 0) {
+    $output .= '<div>';
+    $output .= '<h3>Pot Bonus</h3>';
+    $output .= $payset->pot_bonus;
+    $output .= '</div>';
+  }
+  return $output;
+}
+
