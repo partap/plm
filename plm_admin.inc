@@ -1382,36 +1382,32 @@ function plm_entrant_delete($entid) {
   return _plm_delete_entrant($entid);
 }
 
-function plm_payout_editor($payid=0) {
+function plm_payouts($payid=0) {
   //drupal_set_message('plm_payset_editor()');
+  $is_admin = user_access('administer poker league');
   if (!$payid) $payid = variable_get('plm_default_payset', 0);
   if ($payid) {
     $payset = _plm_get_payset($payid);
   }
-  //drupal_set_message('payset: <pre>' . print_r($payset, TRUE) . '</pre>');
   
   $recs = _plm_get_paysets();
-  //if (!$payset && $recs) {
-  //   $payset = $recs[0];
-  //}
-  //if (!isset($payset))
   $output .= drupal_get_form('plm_select_payset_form', $recs, $payset);
   if ($payset)
-  //else
     $output .= drupal_get_form('plm_edit_payset_form', $payset);
+
   if ($payset) {
     $add_button = l('Add Payout', "admin/plm/payout/addrow/$payid/10");
     $output .= "<div>$add_button</div>";
     $payrules = _plm_get_payrules($payset->payid);
     if ($payrules) {
       $path = drupal_get_path('module', 'plm');
-      //drupal_set_message('path: ' . $path);
+
       drupal_add_js("$path/js/jquery.jeditable.js");
       drupal_add_js(array('plm' => array(
             'modulePath' => $path,
           )), 'setting');
       drupal_add_js("$path/js/plm.js");
-      //$output .= '<div class="edit" id="div_1">Dolor</div>';
+
       $dstr = '';
       $max_places = 0;
       $headers = array('Plyrs', 'Pot');
@@ -1435,10 +1431,7 @@ function plm_payout_editor($payid=0) {
         $headers[$place_index] = _plm_format_place($rule->place);
         if ($rule->place > $max_places) $max_places = $rule->place;        
       }
-      //drupal_set_message('<pre>num_places=' . print_r($num_places, 1) . '</pre>');
-      //drupal_set_message("<pre>$dstr</pre>");
       $this_uri = request_uri();
-      //drupal_set_message($this_uri);
       foreach ($rowdata as $rownum => $row) {
         $num_players = $row[0]['data'];
         $total = $payset->pot_bonus;
@@ -1451,7 +1444,6 @@ function plm_payout_editor($payid=0) {
             'class' => $rowdata[$rownum][$i]['class'] . ' edit', 
             'id' => "payout-$payset->payid-$num_players-$place",
           );
-          //'attributes' => array('class' => 'popups-form')));
 
         }
         if ($total == $row[1]['data']) {
@@ -1460,7 +1452,6 @@ function plm_payout_editor($payid=0) {
         else{
           $rowdata[$rownum][$max_places+$num_headers+1] = array( 'data' => $row[1]['data']-$total,
                                                           'class' => 'rowchecksum');
-          //$rowdata[$rownum][$max_places+$num_headers+1]['class'] = 'error';
         }
         ksort($rowdata[$rownum], SORT_NUMERIC);
       }
@@ -1468,12 +1459,9 @@ function plm_payout_editor($payid=0) {
         'data' => _plm_format_place($max_places+1),
         'class' => 'table-cmd'
       );
-      //$headers[$max_places+$num_headers+1] = '';        
-      //$headers[$max_places+$num_headers+1] = t('Total');        
       ksort($headers, SORT_NUMERIC);
 
       $curr_uri = check_plain(request_uri());
-      //$curr_uri = $_GET['q'];
       
       $addcmd = array();
       foreach($rowdata as $i => $row) {
@@ -1491,9 +1479,7 @@ function plm_payout_editor($payid=0) {
                 array('query' => array("destination" => $curr_uri)));
         array_unshift($rowdata[$i],
           array(
-            //'data' => l('del', $curr_uri, array('query' => array('del' =>'bar'))),
             'data' => "$delcmd",
-                    //array('query' => array('del' =>'bar'))),
             'class' => 'table-cmd'
           ));
       }
@@ -1503,14 +1489,12 @@ function plm_payout_editor($payid=0) {
           'class' => 'table-cmd',
         );
         $rowdata[$newi][] = array('data' => $newi, 'header' => true);
-        //$rowdata[$newi][] = $newi*$payset->buyin + $payset->pot_bonus;
       }
       ksort($rowdata, SORT_NUMERIC);
       $attr = array(
         'class' => 'numgrid',
         'id' => 'payouts'
       );
-      //drupal_set_message('<pre>' . print_r($rowdata, TRUE) . '</pre>');
       $output .= '<div class="scroll-wrapper">';
       $output .= theme('table', $headers, $rowdata, $attr, $caption);
       $output .= '</div>';
@@ -1557,7 +1541,6 @@ function plm_select_payset_form_submit($form, &$form_state) {
 }
 
 function plm_edit_payset_form(&$form_state, $oldrec=NULL) {
-  //drupal_set_message('plm_edit_payset_form()');
   
    if (isset($oldrec)){
      $form['payid'] = array(

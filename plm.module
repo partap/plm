@@ -352,6 +352,14 @@ function plm_menu() {
     'weight' => 1,
     'menu_name' => 'plm',
   );
+  $items['plm/payouts'] = array(
+    'title' => t('Payouts'),
+    'description' => 'View payout structures',
+    'page callback' => 'plm_payouts',
+    'access arguments' => array('access poker league member content'),
+    'type' => MENU_NORMAL_ITEM,
+    'file' => 'plm_admin.inc',
+  );
   $items['plm/ajax'] = array(
     'title' => 'Ajax Popup response URL',
     'page callback' => 'plm_ajax',
@@ -391,7 +399,7 @@ function plm_menu() {
   $items['admin/plm/payout'] = array(
     'title' => t('Payout Editor'),
     'description' => 'View or edit payout structures',
-    'page callback' => 'plm_payout_editor',
+    'page callback' => 'plm_payouts',
     'access arguments' => array('administer poker league'),
     'type' => MENU_NORMAL_ITEM,
     'file' => 'plm_admin.inc',
