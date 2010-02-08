@@ -1892,7 +1892,7 @@ function plm_ajax_payout_load() {
   //return "$id";
   //return drupal_json($id);
   list($str, $payid, $num_players, $place) = split('-', $id);
-  error_log("plm_ajax_payout_load($id): payid=$payid, num_players=$num_players, place=$place");
+  //error_log("plm_ajax_payout_load($id): payid=$payid, num_players=$num_players, place=$place");
 
   //drupal_set_header('Content-Type: text/plain; charset=utf-8');
   drupal_set_header('Content-Type: application/json; charset=utf-8');
@@ -1906,8 +1906,8 @@ function plm_ajax_payout_save() {
   $value = $_REQUEST['value'];
   list($str, $payid, $num_players, $place) = split('-', $id);
   $payrule = _plm_get_payrule($payid, $num_players, $place);
-  error_log("plm_ajax_payout_load($id): payid=$payid, num_players=$num_players, place=$place");
-  //drupal_set_header('Content-Type: text/plain; charset=utf-8');
+  //error_log("plm_ajax_payout_load($id): payid=$payid, num_players=$num_players, place=$place");
+  drupal_set_header('Content-Type: application/json; charset=utf-8');
   if (is_numeric($value) && $value > 0) {
     _plm_insert_payrule($payid, $num_players, $place, $value);
     $amount = $value;
