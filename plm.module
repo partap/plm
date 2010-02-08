@@ -2029,6 +2029,16 @@ function plm_payouts($payid=0) {
 function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
   
   $is_admin = user_access('administer poker league');
+
+  //$bpath = base_path();
+  $base_path = preg_replace('/\//', '\\/', base_path());
+  $request_uri = request_uri();
+  $current_uri = preg_replace('/^' . $base_path . '/', '', $request_uri);
+  //drupal_set_message("request_uri = $request_uri");
+  //drupal_set_message("current_uri = $current_uri");
+  //$is_admin = (strpos($current_uri, "admin/plm")===0);
+  //drupal_set_message("is_admin: $is_admin");
+  
   $payid = $payset->payid;
   if (!isset($payid)) $payid = 0;
   //drupal_set_message("payid: $payid");
@@ -2038,7 +2048,7 @@ function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
       $options[$item->payid] = $item->title;
     }
   }
-  $submit_js = "if (\$('#edit-payset-sel').val() != 0) { document.getElementById('plm-select-payset-form').submit(); }";
+  $submit_js = "if (\$('#edit-payset-sel').val() != 0) { \$('#edit-payset-sel').parents('form:first').submit(); }";
   $form['payset_sel'] = array(
     '#type' => 'select',
     '#default_value' => $payid,
@@ -2053,9 +2063,13 @@ function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
     $form['submit'] = array(
       '#type' => 'submit',
       '#value' => 'Set Default',
-      '#attributes' => array('style' => 'display: inline')
+      '#attributes' => array('style' => 'display: inline'),
     );
   }
+  else{
+    
+  }
+
   return $form;
 }
 function plm_select_payset_form_submit($form, &$form_state) {
@@ -2064,8 +2078,8 @@ function plm_select_payset_form_submit($form, &$form_state) {
   $target = request_uri();
   $target = ltrim(preg_replace('/\/[\d]+$/', '', $target), '/');
 
-   if ($payid > 0) $target = $target . "/$payid";
-  
+  if ($payid > 0) $target = $target . "/$payid";
+  //drupal_set_message("target: $target");
   $form_state['redirect'] = $target;
 }
 
