@@ -484,6 +484,12 @@ function plm_menu() {
   
 }
 
+// hook_popups
+function plm_popups() {
+  //drupal_set_message('plm_popups called');
+  return array('*' => array('.popups-form' => array('noMessage' => true)));
+}
+
 function plm_payrule_load($payid, $num_players, $place) {
   //drupal_set_message("plm_payrule_load($payid, $num_players, $place)");
   return _plm_get_payrule($payid, $num_players, $place);
@@ -1431,7 +1437,7 @@ function theme_plm_game_results($game, $results) {
     $rows[] = $row;
     $total += $r->cash;
   }
-  
+  popups_add_popups(array('.popups-form' => array('noMessage' => true)));
   $rem = $expected_pot_total - $total;
 
   // make sure the payouts add up,

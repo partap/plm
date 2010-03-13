@@ -799,12 +799,14 @@ function plm_result_form(&$form_state, $result) {
     '#value' => 'Save',
   );
   $form['cancel'] = array(
-    '#value' => l("Cancel", "plm/games/$result->gid"),
+    '#type' => 'submit',
+    '#value' => 'Cancel',
+    //'#value' => l("Cancel", "plm/games/$result->gid"),
   );
   $form['delete'] = array(
     '#type' => 'button',
     '#value' => 'Delete',
-    '#submit' => 'plm_result_delete_submit',
+    //'#submit' => 'plm_result_delete_submit',
   );
   return $form;  
 }
@@ -816,6 +818,11 @@ function plm_result_form_validate($form, &$form_state) {
   $name   = trim($form_state['values']['name']);
   $points = trim($form_state['values']['points']);
   $cash   = trim($form_state['values']['cash']);
+
+  $op = isset($form_state['values']['op']) ? $form_state['values']['op'] : '';
+  if ($op == 'Cancel'){
+    return;
+  }
 
   
   if (strlen($name) > 0) 
@@ -845,12 +852,21 @@ function plm_result_form_validate($form, &$form_state) {
   
 }
 function plm_result_form_submit($form, &$form_state) {
+  $op = isset($form_state['values']['op']) ? $form_state['values']['op'] : '';
+  if ($op == 'Cancel'){
+    return;
+  }
   $r->gid     = $form_state['values']['_gid'];
   $r->place   = $form_state['values']['_place'];
   $r->pid     = $form_state['values']['pid'];
   $r->points  = trim($form_state['values']['points']);
   $r->cash    = trim($form_state['values']['cash']);
   $name       = trim($form_state['values']['name']);
+
+  if ($op == 'Delete'){
+    $form_state['redirect'] = 'plm/results/' . $r->gid . '/' . $r->place. '/delete';
+    return;
+  }
   
   $new_player = $form_state['values']['_new_player'];
   if ($new_player){
@@ -882,12 +898,14 @@ function plm_result_form_submit($form, &$form_state) {
 }
 
 function plm_result_delete_submit($form, &$form_state) {
+  drupal_set_message('plm_result_delete_submit');
   $gid = $form_state['values']['_gid'];
   $place = $form_state['values']['_place'];
   $form_state['redirect'] = 'plm/results/' . $gid . '/' . $place. '/delete';
 }
 
 function plm_result_confirm_delete(&$form_state, $result) {
+  drupal_set_message('confirm delete');
   $form['_result'] = array('#type' => 'value', '#value' => $result);
 
   return confirm_form(
@@ -903,7 +921,7 @@ function plm_result_confirm_delete_submit($form, &$form_state) {
     drupal_set_message(t("The result for game:%gid place: %place has been deleted.", 
                          array('%gid'   => $result->gid,
                                '%place' => $result->place)));
-  $form_state['redirect'] = "plm/games/$result->gid";
+  //$form_state['redirect'] = "plm/games/$result->gid";
 }
 function plm_result_delete($gid,$place) {
   return _plm_delete_result($gid, $place);
