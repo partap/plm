@@ -126,16 +126,20 @@ function _plm_get_active_players($game) {
   $gid = $game->gid;
   $game_date = $game->game_date;
   //$now = time();
-  $sql = "SELECT p.pid AS pid, p.name AS name, Max(g.game_date) AS last,
+  $sql = "SELECT p.pid AS pid, p.name AS name, 
+          (case WHEN Max(g.game_date) > Max(g2.game_date)
+             THEN Max(g.game_date) 
+             ELSE Max(g2.game_date) END) AS last,
           (CASE WHEN p.pid IN (SELECT x.pid FROM {plm_entrant} x WHERE x.gid=%d) 
              THEN 1 ELSE 0 END) AS registered
           FROM {plm_player} p
           LEFT JOIN {plm_entrant} e ON p.pid=e.pid 
           LEFT JOIN {plm_result} r ON p.pid=r.pid
-          LEFT JOIN {plm_game} g ON ((e.gid=g.gid OR r.gid=g.gid) AND g.game_date < %d)
+          LEFT JOIN {plm_game} g ON (r.gid=g.gid AND g.game_date < %d)
+          LEFT JOIN {plm_game} g2 ON (e.gid=g2.gid AND g2.game_date < %d)
           GROUP BY p.pid,p.name
           ORDER BY name;";
-  $result = db_query($sql, $gid, $game_date);
+  $result = db_query($sql, $gid, $game_date, $game_date);
   $list = array();
   while ($row = db_fetch_object($result)) {
     $list[] = $row;

@@ -764,6 +764,7 @@ function plm_game_form_submit($form, &$form_state) {
 
 
 function plm_result_form(&$form_state, $result) {
+  popups_add_popups();
   $game = plm_game_load($result->gid);
   $title = $game->title . ': ' . _plm_format_place($result->place) . ' Place';
   drupal_set_title($title);
@@ -1063,7 +1064,7 @@ function plm_entrants_form(&$form_state, $game=NULL) {
       '#type' => 'textfield',
       '#title' => 'New Player',
       '#size' => 20,
-      '#autocomplete_path'  => 'plm/autocomplete/player',                  
+      //'#autocomplete_path'  => 'plm/autocomplete/player',                  
       '#required'      => false,
       // Set initial focus
       '#attributes'    => array('class' => 'focus'),
@@ -1089,14 +1090,21 @@ function plm_entrants_form(&$form_state, $game=NULL) {
     $players = _plm_get_active_players($game);
     foreach ($players as $p) {
       //$attr = array('onClick' => "alert('Clicked $p->name pid:$p->pid last:$p->last');return false;");
-      $attr = array('onClick' => "add_entrant($gid, $p->pid);return false;");
+      $attr = array(
+        'onClick' => "add_entrant($gid, $p->pid);return false;",
+        'style' => 'cursor:pointer;',
+      );
       $form['addbutton'][$p->pid] = array(
         '#value' => l('<img src="' . url($addimg) . '"/>', '#',array(
                     'html' => true,
-                    'attributes' => array('onClick' => "add_entrant($gid, $p->pid);return false;"))));
+                    //'attributes' => array('onClick' => "add_entrant($gid, $p->pid);return false;"),
+                    'attributes' => $attr,
+                  ))
+      );
       $form['player'][$p->pid] = array(
-      '#value' => l("$p->name","plm/players/pid/$p->pid"),
-      //'#value' => l("$p->name","#",array('attributes' => $attr))
+        //'#value' => l("$p->name","plm/players/pid/$p->pid"),
+        //'#value' => l("$p->name","javascript:void(0);",array('attributes' => $attr))
+        '#value' => "<span " . drupal_attributes($attr) . ">$p->name</span>",
       );
       $form['last']["$p->pid"] = array(
         '#value' => "$p->last"
@@ -1154,26 +1162,30 @@ function plm_entrants_form_validate($form, &$form_state) {
 
 function plm_entrants_form_submit($form, &$form_state) {
   //drupal_set_message('plm_entrants_form_submit(): form: <pre>' . print_r($form, true) . '</pre>');
-  //drupal_set_message('plm_entrants_form_submit(): form_state: <pre>' . print_r($form_state, true) . '</pre>');
+//drupal_set_message('plm_entrants_form_submit(): form_state: <pre>' . print_r($form_state, true) . '</pre>');
   $oldrec        = $form_state['values']['_entrant'];
   $r->gid     = $form_state['values']['_gid'];
   $r->pid     = $form_state['values']['pid'];
   $name       = trim($form_state['values']['name']);
   
   //$new_player = $form_state['values']['_new_player'];
+
+  $entrants = array();
   if (strlen($name)){
     $rec = new stdClass();
     $rec->name = $name;
     $r->pid = _plm_insert_player($rec);
+    $entrants[] = $r->pid;
   }
   $sel = $form_state['values']['player_sel'];
-  $entrants = array();
   if (is_array($sel)) {
     foreach ($sel as $val) {
       $entrants[] = $val;
     }
   }
-  else  $entrants[] = $sel;
+  elseif ($sel) {
+    $entrants[] = $sel;
+  }
   foreach ($entrants as $pid) {
     $r->pid = $pid;
     _plm_insert_entrant($r);
