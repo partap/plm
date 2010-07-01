@@ -40,7 +40,7 @@ function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
           LEFT JOIN {plm_player} p ON p.pid = e.pid
           LEFT JOIN {plm_result} r ON p.pid=r.pid AND r.gid=g.gid
           WHERE g.finished != 0"
-          . $where_phrase . " GROUP BY p.pid, p.name, p.uid " . $sort_phrase . " NULLS LAST";  
+      . $where_phrase . " GROUP BY p.pid, p.name, p.uid " . $sort_phrase ;//. " NULLS LAST";  
   //drupal_set_message("SQL1: $sql");
   if ($max > 0){
     $count_qry = 'SELECT count(*) from {plm_player}';
@@ -59,8 +59,9 @@ function _plm_get_players($sort_phrase, $where_phrase = '', $max=-1) {
 }
 
 function _plm_get_rankings($sid, $limit = NULL) {
-  $sort_phrase = "ORDER BY points DESC NULLS LAST, cash DESC NULLS LAST, places DESC NULLS LAST, 
-  last_place DESC NULLS LAST, name NULLS LAST";
+    //$sort_phrase = "ORDER BY points DESC NULLS LAST, cash DESC NULLS LAST, places DESC NULLS LAST, 
+    //last_place DESC NULLS LAST, name NULLS LAST";
+  $sort_phrase = "ORDER BY points DESC , cash DESC , places DESC, last_place DESC, name";
   if ($limit) $sort_phrase .= " LIMIT $limit";
 //   $sql = "SELECT p.pid, p.name, g.sid,
 //     SUM(points) AS points, SUM(cash) AS cash, 
@@ -263,7 +264,7 @@ function _plm_get_games($sid, $sort_phrase=NULL) {
           LEFT JOIN {plm_player} p ON p.pid=g.hid 
           LEFT JOIN {plm_result} r ON g.gid=r.gid
           LEFT JOIN {plm_player} p2 ON r.pid=p2.pid
-          WHERE g.sid=%d AND (r IS NULL OR r.place=1)
+          WHERE g.sid=%d AND (r.place IS NULL OR r.place=1)
           $sort_phrase";
   $result = db_query($sql, $sid);
   while ($row = db_fetch_object($result)){
@@ -489,6 +490,13 @@ function _plm_get_payset($payid) {
   $result = db_query($sql, $payid);
   return db_fetch_object($result);
 }
+
+function _plm_get_payset_by_title($title) {
+    $sql = "SELECT * from {plm_payset} WHERE title='%s'";
+    $result = db_query($sql, $title);
+    return db_fetch_object($result);
+}
+
 function _plm_insert_payset($rec) {
   $sql = "INSERT INTO {plm_payset} (title, buyin, pot_bonus)
             VALUES ('%s', %d, %d)";
@@ -506,7 +514,7 @@ function _plm_delete_payset($payid) {
   _plm_delete_payrules($payid);
   $sql = "DELETE FROM {plm_payset} WHERE payid=%d";
   $result = db_query($sql, $payid);
-  return db_fetch_object($result);
+  return $result;
 }
 
 function _plm_get_payrules($payid, $num_players=NULL) {
@@ -530,13 +538,14 @@ function _plm_get_payrule($payid, $num_players, $place) {
 function _plm_delete_payrule($payid, $num_players, $place) {
   $sql = "DELETE FROM {plm_payrule} WHERE payid=%d AND num_players=%d and place=%d";
   $result = db_query($sql, $payid, $num_players, $place);
-  return db_fetch_object($result);
+  return $result;
 }
 function _plm_delete_payrules($payid, $num_players=0) {
   $sql = "DELETE FROM {plm_payrule} WHERE payid=%d";
-  if ($num_players) $sql .= " AND num_players=%d";
+  if ($num_players > 0) $sql .= " AND num_players=%d";
   $result = db_query($sql, $payid, $num_players);
-  return db_fetch_object($result);
+  return $result;
+
 }
 
 function _plm_insert_payrule($payid, $num_players, $place, $amount) {
