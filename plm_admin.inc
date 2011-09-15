@@ -893,8 +893,8 @@ function plm_result_form_submit($form, &$form_state) {
                 '%gid' => $r->gid )));
     }      
   }
-  //$form_state['redirect'] = 'plm/games/' . $r->gid;
-
+  $form_state['redirect'] = 'plm/games/' . $r->gid . '/edit';
+  //http://abqpt.com/plm/games/738/edit
 }
 
 function plm_result_delete_submit($form, &$form_state) {

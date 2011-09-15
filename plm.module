@@ -1431,7 +1431,7 @@ function theme_plm_game_results($game, $results) {
       else{
         $row[] = l(t('edit'), 
                  "plm/results/$r->gid/$r->place/edit",
-                 array('attributes' => array('class' => 'popups-form'))
+                 array('attributes' => array('class' => 'popups-form-x'))
         );
       }
     }
