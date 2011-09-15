@@ -764,7 +764,7 @@ function plm_game_form_submit($form, &$form_state) {
 
 
 function plm_result_form(&$form_state, $result) {
-  popups_add_popups();
+  //popups_add_popups();
   $game = plm_game_load($result->gid);
   $title = $game->title . ': ' . _plm_format_place($result->place) . ' Place';
   drupal_set_title($title);
