@@ -33,6 +33,12 @@ function plm_schema() {
         'type' => 'int', 'size' => 'tiny',
         'not null' => TRUE,
         'default' => 1,
+      ),
+      'bonus_points' => array(
+        'description' => 'Bonus points awarded for playing',
+        'type' => 'int', 
+        'not null' => TRUE,
+        'default' => 0,
       )
     ),
     'primary key' => array('sid'),
@@ -118,6 +124,12 @@ function plm_schema() {
         'unsigned' => TRUE,
         'not null' => FALSE
       ),
+      'bonus_points' => array(
+        'description' => 'Bonus points awarded for playing this game',
+        'type' => 'int', 
+        'not null' => TRUE,
+        'default' => 0,
+      )
     ),
     'primary key' => array(
       'gid',
@@ -340,6 +352,46 @@ function plm_update_6004() {
       'not null' => TRUE,
       'default' => 1,
     ));
+  return $ret;
+}
+
+function plm_update_6005() {
+  $ret = array();
+  db_add_field($ret, 'plm_season', 'bonus_points', array(
+      'description' => 'Bonus points awarded for playing',
+      'type' => 'int', 
+      'not null' => TRUE,
+      'default' => 0,
+    ));
+  db_add_field($ret, 'plm_game', 'bonus_points', array(
+      'description' => 'Bonus points awarded for playing',
+      'type' => 'int', 
+      'not null' => TRUE,
+      'default' => 0,
+    ));
+
+  return $ret;
+}
+
+function plm_update_6006() {
+  $ret = array();
+  db_add_field($ret, 'plm_season', 'num_games', array(
+      'description' => 'Total number of games in the season',
+      'type' => 'int', 
+      'not null' => TRUE,
+      'default' => 0,
+    ));
+
+  db_query("UPDATE {plm_season} s 
+            LEFT JOIN (
+              SELECT s.sid, s.title, count(g.gid) AS num_games 
+              FROM {plm_season} s 
+              LEFT JOIN {plm_game} g USING (sid) 
+              GROUP BY sid
+            ) AS s2 USING (sid) 
+            SET s.num_games=s2.num_games");
+  
+
   return $ret;
 }
 

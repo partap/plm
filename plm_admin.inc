@@ -685,9 +685,10 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
 
   if ($oldrec->num_players){
     $results = _plm_get_results($oldrec->gid);
+    $entrants = _plm_get_game_entrants($oldrec->gid);
 
     $form['results'] = array(
-      '#value' => theme('plm_game_results', $oldrec, $results),
+      '#value' => theme('plm_game_results', $oldrec, $results, $entrants),
       '#weight' => 90,
     );
     $form['presentation']['finished'] = array(
@@ -732,7 +733,7 @@ function plm_game_form_validate($form, &$form_state) {
                  array('@title' => $title)));
   
   $list_entrants = $form_state['values']['list_entrants'];
-  if ($list_entrants){
+  if ($list_entrants && $gid){
     $num_entrants = _plm_get_num_game_entrants($gid);
     if ($num_entrants > 0)
       $form_state['values']['num_players'] = $num_entrants;

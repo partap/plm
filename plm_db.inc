@@ -330,7 +330,7 @@ function _plm_insert_game($rec) {
                    VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
          $rec->title, $rec->sid,
          $rec->game_date, $rec->hid, $rec->num_players, 
-         $rec->pot_start, $rec->buyin, $rec->list_players, $rec->announced, $rec->finished, $rec->payid);
+         $rec->pot_start, $rec->buyin, $rec->list_entrants, $rec->announced, $rec->finished, $rec->payid);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_game}'), 'gid');
 }

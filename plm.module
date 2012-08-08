@@ -1376,14 +1376,14 @@ function plm_result_load($gid, $place) {
 function _plm_result_new($game, $place, $points, $cash) {
   $res->gid = $game->gid;
   $res->place  = $place;
-  $res->points = isset($points)?$points:_plm_rules_default_points($game, $place);
-  $res->cash   = isset($cash)?$cash:_plm_rules_default_payout($game, $place);
+  $res->points = isset($points)? $points : _plm_rules_default_points($game, $place);
+  $res->cash   = isset($cash)? $cash : _plm_rules_default_payout($game, $place);
   return $res;
 }
 
 function _plm_result_row($result) {
   $row = array(
-    _plm_format_place($result->place),
+    $result->done? _plm_format_place($result->place) : 'In Game',
     l(t($result->name), 'plm/players/pid/' . $result->pid),
     array('data' => $result->points, 'class' => 'numcol'),
   );
@@ -1395,7 +1395,7 @@ function _plm_result_row($result) {
   return $row;
 }
 
-function theme_plm_game_results($game, $results) {
+function theme_plm_game_results($game, $results, $entrants) {
   $gid = $game->gid;
   $is_member = user_access('access poker league member content');
   $is_admin = user_access('administer poker league');
@@ -1418,15 +1418,61 @@ function theme_plm_game_results($game, $results) {
   }
 
   $num_places = $game->num_players;
-  //if ($num_places > 5) $num_places = 5;
+
   if ($game->finished) $num_places = count($results);
   // Add up total prizepool
   $total = 0;
 
   $expected_pot_total = $game->pot_start + $game->buyin * $game->num_players;
+
+  $display_results = $results;
+
+  if ($entrants){
+    // Keep track of player places
+    $entrant_places = array();
+    $display_results = array();
+
+    // insert known results
+    foreach ($results as $i => $r) {
+      $entrant_places[$r->pid] = $r->place;
+      $display_results[$r->place] = $r;
+      $display_results[$r->place]->done = TRUE;
+    }
+
+    $payrules = _plm_get_payrules($game->payid, count($entrants));
+    $cash = array();
+    foreach ($payrules as $p) {
+      $cash[$p->place] = $p->amount;
+    }
+    
+    $points = array(0, 10, 7, 5, 3, 1);
+
+    $place = 1;
+    while ($results[$place]) {$place++;}
+    foreach ($entrants as $e) {
+      if (!$entrant_places[$e->pid]) {
+        $entrant_places[$e->pid] = $place;
+        $p = isset($points[$place])? $points[$place] : 0;
+        if ($game->bonus_points) $p += $game->bonus_points;
+
+        $c = isset($cash[$place])? $cash[$place] : 0;
+        $display_results[$place] = _plm_result_new($game, $place, $p, $c);
+        error_log("Setting place: $place, points: $p, cash: $c");
+        $display_results[$place]->pid = $e->pid;
+        $display_results[$place]->name = $e->name;
+        $display_results[$place]->done = FALSE;
+        // get next empty place
+        $place++;
+        while ($results[$place]) {$place++;}
+      }
+    }
+  } 
+
+  
+  
   // Format results in table
   for ($place=1;$place<=$num_places;$place++){
-    $r = $results[$place];
+    $r = $display_results[$place];
     // display blank result for admin if not set
     if (!$r){
       if ($total >= $expected_pot_total){
