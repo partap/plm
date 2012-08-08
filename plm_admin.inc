@@ -58,8 +58,6 @@ function plm_settings() {
     '#type' => 'checkbox',
     '#title' => t('Auto-Number Games'),
     '#default_value' => variable_get('plm_auto_number', TRUE),
-    '#size' => 10,
-    '#maxlength' => 10,
     '#description' => t("If enabled, the default game title will be automatically numbered (eg. \"Week 1\", \"Week 2\" ...)"),
     '#required' => TRUE, );
 
@@ -72,6 +70,13 @@ function plm_settings() {
     '#description' => t("The default duration of a season, in weeks"),
   );
 
+  $form['plm_list_entrants'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('List all game entrants'),
+    '#default_value' => variable_get('plm_list_entrants', TRUE),
+    '#description' => 'If enabled, list all entrants for every game, rather than just the players who win points or cash',
+    '#required' => TRUE,
+  );
   return system_settings_form($form);
 }
 
@@ -105,7 +110,8 @@ function plm_settings_submit($form, &$form_state) {
   //print_r('auto_number: ' . $auto_number);
   $cur_season = $form_state['values']['plm_current_season'];
   variable_set('plm_current_season', $cur_season);
-  
+  $list_entrants = $form_state['values']['plm_list_entrants'];
+  variable_set('plm_list_entrants', $list_entrants);
 }
 
 function plm_season_form(&$form_state, $rec = NULL) {
@@ -156,6 +162,14 @@ function plm_season_form(&$form_state, $rec = NULL) {
     $form['end_date']['#default_value'] = format_date($end_date, 'custom',
                                           $widget_fmt, 0);
   
+  $form['list_entrants'] = array(
+    '#type' => 'checkbox',
+    '#title' => t('List all game entrants'),
+    '#default_value' => $rec->list_entrants,
+    '#description' => 'If enabled, list all entrants for every game, rather than just the players who win points or cash',
+    '#required' => TRUE,
+  );
+
   // Generate blank schedule for a new season
   $form['sched'] = array(
     '#type' => 'fieldset',
@@ -239,8 +253,8 @@ function plm_season_form_submit($form, &$form_state) {
   $endstr = $form_state['values']['end_date'];
   if ($endstr)
     $season->end_date = strtotime($endstr);
-
-
+  $season->list_entrants = $form_state['values']['list_entrants'];
+  drupal_set_message("List entrants: $list_entrants");
   if ($sid) $res = _plm_update_season($season);
   else $res = _plm_insert_season($season);
 
@@ -268,6 +282,7 @@ function plm_season_form_submit($form, &$form_state) {
     $rec->title      = $prefix . ' ' . ($game_num+$i);
     $rec->game_date = $base_date + (60*60*24*7 * $i);
     $rec->buyin      = variable_get('plm_default_buyin', 10);
+    $rec->payid      = variable_get('plm_default_payset', 0);
     _plm_insert_game($rec);
   }
   drupal_set_message(
@@ -315,7 +330,7 @@ function plm_player_form(&$form_state, $player=NULL) {
     '#title' => 'Player Name',
     '#size'               => 20,
     '#maxlength'          => 60,
-    '#autocomplete_path'  => 'plm/autocomplete/player',                  
+    //'#autocomplete_path'  => 'plm/autocomplete/player',                  
     '#default_value'      => $player->name,
     '#required'           => TRUE,
   );
@@ -500,8 +515,8 @@ function plm_player_delete($pid) {
 function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   global $user;
   if (isset($oldrec)) {
-    drupal_set_title("Edit Game");
     $season = plm_season_load($oldrec->sid);
+    drupal_set_title("Edit Game");
   }
   else {
     drupal_set_title("New Game");
@@ -511,7 +526,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   $sid = $season->sid;
   $form['season'] = array(
     '#title'         => t('Season'),
-    '#value' => '<h3>' . l($season_title, "plm/seasons/$sid") . '</h3>',
+    '#value' => '<h3>' . l("Back to $season_title", "plm/seasons/$sid") . '</h3>',
     "#weight" => -20,
   );
   
@@ -547,10 +562,9 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   $form['id_section']['host_name'] = array(
     '#type'          => 'textfield',
     '#title'         => t('Host'),
-    '#autocomplete_path'  => 'plm/autocomplete/player',                  
+    '#autocomplete_path'  => 'plm/autocomplete/allplayers',                  
     '#default_value' => $host,
-    '#size' => 16,
-    '#maxlength' => 16,
+    '#size' => 20,
 
   );
 
@@ -581,8 +595,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     $list_entrants = $oldrec->list_entrants;
   else 
     // Use season default
-    //$list_entrants = $season->list_entrants;
-    $list_entrants = true;
+    $list_entrants = $season->list_entrants;
 
   $form['player_section'] = array('#type' => 'fieldset');
 
@@ -621,7 +634,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   $form['pay_section'] = array('#type' => 'fieldset');
 
   $submit_js = "document.getElementById('plm-select-payset-form').submit();";
-  $options = array(0 => 'Select a Payout');
+  $options = array(0 => 'Custom');
   $paysets = _plm_get_paysets();
   if ($paysets) {
     foreach ($paysets as $item) {
@@ -775,15 +788,15 @@ function plm_result_form(&$form_state, $result) {
   $form['name'] = array(
     '#type' => 'textfield',
     '#title' => 'Player Name',
-    '#autocomplete_path'  => 'plm/autocomplete/player',                  
+    '#autocomplete_path'  => 'plm/autocomplete/player/'.$result->gid,                  
     '#default_value' => $result->name,
   );
-  $form['_new_player'] = array(
-    '#type' => 'checkbox',
-    '#title' => 'New Player',
-    '#default_value' => FALSE,
-    '#description' => 'Check this box if this is a new player to the league.',
-  );
+  //$form['_new_player'] = array(
+  //  '#type' => 'checkbox',
+  //  '#title' => 'New Player',
+  //  '#default_value' => FALSE,
+  //  '#description' => 'Check this box if this is a new player to the league.',
+  //);
   $form['points'] = array(
     '#type' => 'textfield',
     '#title' => 'Points',
@@ -853,9 +866,6 @@ function plm_result_form_validate($form, &$form_state) {
 }
 function plm_result_form_submit($form, &$form_state) {
   $op = isset($form_state['values']['op']) ? $form_state['values']['op'] : '';
-  if ($op == 'Cancel'){
-    return;
-  }
   $r->gid     = $form_state['values']['_gid'];
   $r->place   = $form_state['values']['_place'];
   $r->pid     = $form_state['values']['pid'];
@@ -863,6 +873,10 @@ function plm_result_form_submit($form, &$form_state) {
   $r->cash    = trim($form_state['values']['cash']);
   $name       = trim($form_state['values']['name']);
 
+  if ($op == 'Cancel'){
+    $form_state['redirect'] = 'plm/games/' . $r->gid . '/edit';
+    return;
+  }
   if ($op == 'Delete'){
     $form_state['redirect'] = 'plm/results/' . $r->gid . '/' . $r->place. '/delete';
     return;
@@ -948,7 +962,7 @@ function plm_entrant_form(&$form_state, $oldrec=NULL, $game=NULL) {
    '#type' => 'textfield',
    '#title' => 'Player Name',
    '#size' => 20,
-   '#autocomplete_path'  => 'plm/autocomplete/player',                  
+   '#autocomplete_path'  => 'plm/autocomplete/allplayers',                  
    '#default_value' => $player->name,
    '#required'      => true,
    // Set initial focus
@@ -1099,7 +1113,7 @@ function plm_entrants_form(&$form_state, $game=NULL) {
      var i = $("'. $selector .'").not("[@type=\'hidden\']");
      if (i.val() != "") {}
      i[0].focus();});'; 
-    drupal_add_js($jquery_snippet, 'inline'); 
+    //drupal_add_js($jquery_snippet, 'inline'); 
 
     $imgpath = drupal_get_path('module', 'plm') . '/img';
     $addimg = "$imgpath/add_button.png";
@@ -1153,7 +1167,7 @@ function plm_entrants_form(&$form_state, $game=NULL) {
 function plm_entrants_form_validate($form, &$form_state) {
   $oldrec        = $form_state['values']['_entrant'];
   $gid           = $form_state['values']['_gid'];
-  $new_player = $form_state['values']['_new_player'];
+  $new_player    = $form_state['values']['_new_player'];
   
 
   $name   = trim($form_state['values']['name']);
@@ -1299,7 +1313,7 @@ function theme_plm_entrants_form($form) {
         else $elapsed = 'Unknown';
         $rowdata[] = array('data' => $elapsed);
         $class = drupal_render($form['registered'][$pid])?'not-avail':''; 
-        $rows[] = array('id' => "avail-$pid", 'class' => $class, 'data' => $rowdata);
+        $rows[] = array('id' => "pid-$pid", 'class' => $class, 'data' => $rowdata);
       }
     }
     $attr = array('id' => 'plm-available-list');
@@ -1328,6 +1342,7 @@ function plm_ajax_add_entrant() {
     header('x', TRUE, 500);
     exit;
   }
+  _plm_update_num_game_entrants($gid);
   $player = _plm_get_player($pid);
   $num_entrants = _plm_get_num_game_entrants($gid);
   $imgpath = drupal_get_path('module', 'plm') . '/img';
@@ -1344,23 +1359,31 @@ function plm_ajax_add_entrant() {
     'class' => 'narrow-mid-col');
   $attr = array('id' => "ent-$eid");
 
+
   $output .= table_row($rowdata, $attr);
   echo $output;
 }
 function plm_ajax_del_entrant() {
   $eid = $_REQUEST['eid'];
-
+  error_log('plm_ajax_del_entrant('.$eid.')');
   $entrant = _plm_get_entrant($eid);
-  if (!isset($entrant)){
+  //error_log('entrant: ' . print_r($entrant, 1));
+  if (!$entrant){
+    //error_log("No such entrant: $eid");
     // HTTP/1.1 500 Internal Server Error
     header('x', TRUE, 500);
-    exit;
+    exit();
   }
   _plm_delete_entrant($eid);
+  _plm_update_num_game_entrants($entrant->gid);
   $player = _plm_get_player($entrant->pid);
-  echo 'id="avail-' . $player->pid . '"';
+  header('Content-type: application/json', TRUE, 200);
+  $ret = array('pid' => $player->pid);
+  echo drupal_json($ret);
+  //echo 'id="avail-' . $player->pid . '"';
+  //error_log('got here');
   // forget the html...we just hide and show existing rows now
-  exit;
+  exit();
 }
 
 function table_row($cells, $attributes = NULL) {

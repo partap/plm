@@ -28,6 +28,12 @@ function plm_schema() {
         'type' => 'int', 
         'not null' => FALSE,  // default null
       ),
+      'list_entrants' => array(
+        'description' => 'List all entrants for each game',
+        'type' => 'int', 'size' => 'tiny',
+        'not null' => TRUE,
+        'default' => 1,
+      )
     ),
     'primary key' => array('sid'),
     'unique keys' => array(
@@ -325,6 +331,18 @@ function plm_update_6003() {
   $ret[] = update_sql($sql);
   return $ret;
 }
+
+function plm_update_6004() {
+  $ret = array();
+  db_add_field($ret, 'plm_season', 'list_entrants', array(
+      'description' => 'List all entrants for each game',
+      'type' => 'int', 'size' => 'tiny',
+      'not null' => TRUE,
+      'default' => 1,
+    ));
+  return $ret;
+}
+
 function plm_uninstall() {
   db_query("DELETE FROM {menu_custom} WHERE menu_name = 'plm'");
   db_query("DELETE FROM {menu_links} WHERE module = 'plm'");
@@ -339,7 +357,9 @@ function _plm_install_menu() {
   db_query("INSERT INTO {menu_custom} (menu_name, title, description) 
            VALUES ('%s', '%s', '%s')", 
     'plm', $t('Poker League'), $t('Poker League Menu'));
+
   // Add nav to primary links menu
+
 /*
   $link = array( 
     'link_title' => 'Schedule/Results',

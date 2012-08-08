@@ -1,9 +1,9 @@
 $(document).ready(
     function() {
 
-    $('#payouts td.edit').editable('/admin/plm/ajax/payout/save', {
+    $('#payouts td.edit').editable(Drupal.settings.basePath+'admin/plm/ajax/payout/save', {
         indicator : '<img src="/' + Drupal.settings.plm.modulePath + '/img/indicator.gif">',
-        loadurl   : '/admin/plm/ajax/payout/load',
+        loadurl   : Drupal.settings.basePath+'admin/plm/ajax/payout/load',
         type      : 'text',
         width     : 'auto',
         callback : function(value, settings) {
@@ -27,16 +27,17 @@ $(document).ready(
 });
 
 function add_entrant(gid, pid) {
+    var url = Drupal.settings.basePath+"plm/ajax/add_entrant";
     $.ajax({
-        type: "GET",
-        url: "/plm/ajax/add_entrant",
+        type: "POST",
+        url: url,
         data: {
             gid: gid,
             pid: pid
         },
         success: function(msg) {
             //alert(msg);
-            var id='#avail-'+pid;
+            var id='#pid-'+pid;
             //$(id).remove();
             $(id).addClass('not-avail');
             $('#plm-entrants-list tbody').append(msg);
@@ -50,19 +51,23 @@ function add_entrant(gid, pid) {
 }
 
 function del_entrant(eid) {
+    var url = Drupal.settings.basePath+"plm/ajax/del_entrant";
     $.ajax({
-        type: "GET",
-        url: "/plm/ajax/del_entrant",
+        type: "POST",
+        url: url,
         data: {
             eid: eid,
         },
         success: function(msg) {
-            var idstr = msg.match(/id=\"[^\"]+\"/);
+            //var idstr = msg.match(/id=\"[^\"]+\"/);
+            var idstr = 'pid-' + msg.pid
             if (!idstr) {
-                alert('Error: ' + msg);
+                //alert('Error: ' + msg);
+                console.log('AJAX Error: ' + msg);
                 return;
             }
-            var prow = $('#'+idstr[0].split('"')[1]);
+            //var prow = $('#'+idstr[0].split('"')[1]);
+            var prow = $('#'+idstr);
             prow.removeClass('not-avail');
 
             var delid='#ent-'+eid;
@@ -76,6 +81,7 @@ function del_entrant(eid) {
         },
         error: function(xhr,status,errorThrown){
             alert('Server Error: ' + status + ',' + errorThrown);
+            console.log('Server Error: ' + status + ',' + errorThrown);
         }
     });
 }

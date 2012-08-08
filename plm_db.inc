@@ -179,9 +179,10 @@ function _plm_delete_player($pid) {
   return db_query($sql, $pid);
 }
 
-function _plm_get_players_autocomplete($string) {
-  $sql = "SELECT name FROM {plm_player} 
-          WHERE LOWER(name) LIKE LOWER('%s%%')";
+function _plm_get_players_autocomplete($string, $gid) {
+  $gid_str = $gid ? "gid=$gid AND " : "";
+  $sql = "SELECT name from {plm_player} p JOIN {plm_entrant} e USING (pid) 
+              WHERE $gid_str LOWER(name) like LOWER('%s%%') order by name";
   $result = db_query_range($sql, $string, 0, 10);
   $matches = array();
   while ($player = db_fetch_object($result)) {
@@ -189,19 +190,21 @@ function _plm_get_players_autocomplete($string) {
   }
   return $matches;
 }
+
+
 function _plm_insert_season($season) {
-  $res =  db_query("INSERT INTO {plm_season} (title, start_date, end_date) 
-                    VALUES ('%s', %d, %d)", 
-                   $season->title, $season->start_date, $season->end_date);
+  $res =  db_query("INSERT INTO {plm_season} (title, start_date, end_date, list_entrants) 
+                    VALUES ('%s', %d, %d, %d)", 
+          $season->title, $season->start_date, $season->end_date, $season->list_entrants);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_season}'), 'sid');
   
 }
 function _plm_update_season($season) {
   return db_query("UPDATE {plm_season} 
-                   SET title='%s', start_date=%d, end_date=%d 
+                   SET title='%s', start_date=%d, end_date=%d, list_entrants=%d 
                    WHERE sid = %d", 
-                  $season->title, $season->start_date, $season->end_date, $season->sid);
+    $season->title, $season->start_date, $season->end_date, $season->list_entrants, $season->sid);
 }
 function _plm_delete_season($sid) {
   // Delete games, results from the season too..
@@ -224,7 +227,7 @@ function _plm_get_current_season() {
 function _plm_get_seasons() {
   $sql = "SELECT *, NULLIF(s.end_date,0) AS end_dt
     FROM {plm_season} s 
-    ORDER BY end_dt DESC, s.start_date DESC";
+    ORDER BY  s.start_date DESC,end_dt DESC";
   $result = db_query($sql);
   $res = array();
   while ($rec = db_fetch_object($result)) {
@@ -322,12 +325,12 @@ function _plm_get_game_by_title($title, $sid) {
 // return id of new record or FALSE if error
 function _plm_insert_game($rec) {
   $res = db_query("INSERT INTO {plm_game} 
-                   (title, sid, game_date, hid, num_players, pot_start, buyin, 
+                   (title, sid, game_date, hid, num_players, pot_start, buyin, list_entrants,
                     announced, finished, payid) 
-                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
+                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
          $rec->title, $rec->sid,
          $rec->game_date, $rec->hid, $rec->num_players, 
-         $rec->pot_start, $rec->buyin, $rec->announced, $rec->finished, $rec->payid);
+         $rec->pot_start, $rec->buyin, $rec->list_players, $rec->announced, $rec->finished, $rec->payid);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_game}'), 'gid');
 }

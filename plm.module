@@ -72,10 +72,18 @@ function plm_menu() {
   //   'type' => MENU_NORMAL_ITEM,
   //   'weight' => -100,
   // );
-  $items['plm/autocomplete/player'] = array(
+  $items['plm/autocomplete/allplayers'] = array(
+    'title' => 'player autocomplete',
+    'page callback' => 'plm_player_autocomplete_all',
+    'access arguments' => array('access poker league content'),
+    'type' => MENU_CALLBACK,
+  );
+
+  $items['plm/autocomplete/player/%/'] = array(
     'title' => 'player autocomplete',
     'page callback' => 'plm_player_autocomplete',
     'access arguments' => array('access poker league content'),
+    'page arguments' => array(3),
     'type' => MENU_CALLBACK,
   );
   $items['plm/seasons'] = array(
@@ -596,8 +604,8 @@ function plm_rankings($plm_season=NULL) {
   // Hide cash stats!
   if ($is_member) {
     $header[] = array('data' => t('Cash'), 'class' => 'numcol');
-    //}
-    //if ($is_admin) {
+  }
+  if ($is_admin) {
     $header[] = array('data' => t('Net'), 'class' => 'numcol');
   }
   $header[] = array('data' => t('Places'), 'class' => 'numcol' );
@@ -629,7 +637,6 @@ function plm_rankings($plm_season=NULL) {
     }
     if ($rank <= 10){
       $rowclass = 'finalist';
-      if ($rank == 10) $rowclass .= ' last';
     }
     else{
       $rowclass = '';
@@ -653,9 +660,9 @@ function plm_rankings($plm_season=NULL) {
         'data' => $rec->cash ? '$' . $rec->cash : '',
         'class' => 'numcol',
       );
-      //}
-      // Don't show this to the fishes!
-      //if ($is_admin) {
+    }
+    // Don't show this to the fishes!
+    if ($is_admin) {
       $net = $rec->cash-$rec->buyin;
       if ($net < 0) $str = '($'.-$net.')';
       else $str = '$' . $net . '&nbsp;';
@@ -1366,11 +1373,11 @@ function plm_result_load($gid, $place) {
   return $res;
 }
 // blank game result
-function _plm_result_new($game, $place) {
+function _plm_result_new($game, $place, $points, $cash) {
   $res->gid = $game->gid;
   $res->place  = $place;
-  $res->points = _plm_rules_default_points($game, $place);
-  $res->cash   = _plm_rules_default_payout($game, $place);
+  $res->points = isset($points)?$points:_plm_rules_default_points($game, $place);
+  $res->cash   = isset($cash)?$cash:_plm_rules_default_payout($game, $place);
   return $res;
 }
 
@@ -1422,8 +1429,12 @@ function theme_plm_game_results($game, $results) {
     $r = $results[$place];
     // display blank result for admin if not set
     if (!$r){
-      if ($total >= $expected_pot_total) continue;
-      $r = _plm_result_new($game, $place);
+      if ($total >= $expected_pot_total){
+        $r = _plm_result_new($game, $place, NULL, 0);
+      }
+      else{
+        $r = _plm_result_new($game, $place);
+      }
     }
     $row = _plm_result_row($r);
     if ($is_admin){
@@ -1667,10 +1678,8 @@ function theme_plm_leaderboard_block($plm_season=NULL) {
     $rowdata[] = $newpoints;
 
     $num_final = 10;
-    if ($rank <= $num_final) {
+    if ($rank <= $num_final) 
       $class = 'plm-final';
-      if ($rank == $num_final) $class .= ' last';
-    }
     else 
       $class = 'plm-bubble';
 
@@ -1845,12 +1854,17 @@ function theme_plm_game_entrants($plm_game, $entrants) {
   
 }
 
-function plm_player_autocomplete($string = '') {
+function plm_player_autocomplete_all($string='') {
+  return plm_player_autocomplete(0,$string);
+}
+
+function plm_player_autocomplete($gid = 0, $string='') {
+  error_log("autocomplete($gid, $string)");
   $matches = array();
   if ($string) {
-    $matches = _plm_get_players_autocomplete($string);
+    $matches = _plm_get_players_autocomplete($string, $gid);
   }
-  drupal_json($matches);
+  return drupal_json($matches);
 }
 
 // function plm_season_select($form_id='plm_season_sel', $sid=0, $path=''){
@@ -1972,7 +1986,11 @@ function plm_payouts($payid=0) {
   $is_admin = false;
   $curr_uri = check_plain(request_uri());
 
-  if (!$payid) $payid = variable_get('plm_default_payset', 0);
+
+  $default_payid = variable_get('plm_default_payset', 0);
+  if (!$payid) {
+    $payid = $default_payid;
+  }
   if ($payid) {
     $payset = _plm_get_payset($payid);
   }
@@ -2041,21 +2059,35 @@ function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
   $is_admin = user_access('administer poker league');
 
   //$bpath = base_path();
-  $base_path = preg_replace('/\//', '\\/', base_path());
-  $request_uri = request_uri();
-  $current_uri = preg_replace('/^' . $base_path . '/', '', $request_uri);
+  //$base_path = preg_replace('/\//', '\\/', base_path());
+  //$request_uri = request_uri();
+  //$current_uri = preg_replace('/^' . $base_path . '/', '', $request_uri);
   //drupal_set_message("request_uri = $request_uri");
   //drupal_set_message("current_uri = $current_uri");
   //$is_admin = (strpos($current_uri, "admin/plm")===0);
   //drupal_set_message("is_admin: $is_admin");
-  
+  $default_payid = variable_get('plm_default_payset', 0);
   $payid = $payset->payid;
-  if (!isset($payid)) $payid = 0;
+  if (!isset($payid)) $payid = $default_payid;
+
   //drupal_set_message("payid: $payid");
   $options = array(0 => 'Select a Payout');
   if ($recs) {
     foreach ($recs as $item) {
       $options[$item->payid] = $item->title;
+      //  $prefix = '';
+      // $suffix = '';
+      // if ($item->payid == $default_payid){
+      //   $prefix = '<b>';
+      //   $suffix = '</b>';
+      // }
+      // $options[$item->payid] =  array(
+      //   '#type' => 'item',
+      //   '#prefix' => $prefix, 
+      //   '#title' =>$item->title, 
+      //   '#value' =>$item->value, 
+      //   '#suffix' => $suffix,
+      // );
     }
   }
   $submit_js = "if (\$('#edit-payset-sel').val() != 0) { \$('#edit-payset-sel').parents('form:first').submit(); }";
@@ -2069,35 +2101,63 @@ function plm_select_payset_form(&$form_state, $recs, $payset=NULL) {
     ),
   );
 
+  $form['submit'] = array(
+    '#type' => 'submit',
+    '#value' => 'Submit',
+    '#attributes' => array('style' => 'display: none;'),
+  );
+  
   if ($is_admin) {
-    $form['submit'] = array(
+    $form['set_default'] = array(
       '#type' => 'submit',
       '#value' => 'Set Default',
       '#attributes' => array('style' => 'display: inline'),
     );
   }
-  else{
-    
-  }
 
   return $form;
 }
 function plm_select_payset_form_submit($form, &$form_state) {
+  //$base_url = base_path();
   $payid = $form_state['values']['payset_sel'];
-  if ($form_state['op'] == 'Set Default') variable_set('plm_default_payout', $payid);
-  $target = request_uri();
-  $target = ltrim(preg_replace('/\/[\d]+$/', '', $target), '/');
+  //error_log('op: ' .$form_state['op']);
+  //drupal_set_message('<pre>' . print_r($form_state, 1) . '</pre>');
+  if ($form_state['values']['op'] == 'Set Default') {
+    if ($payid)
+      $payset = _plm_get_payset($payid);
+    if ($payset)
+      $title = $payset->title;
+    else
+      $title = 'Custom';
+    variable_set('plm_default_payset', $payid);
+    
+    drupal_set_message('Default payout structure set to ' . $title);
+    
+  }
+  //drupal_set_message("default payid: $default_payid");
 
-  if ($payid > 0) $target = $target . "/$payid";
+  //$target = request_uri();
+  //error_log("base_url: $base_url");
+  //error_log("Target: $target");
+  //$target = ltrim(preg_replace('/\/[\d]+$/', '', $target), '/');
+  //$target = preg_replace('/\/[\d]+$/', '', $target);
+  //error_log("Target: $target");
+
+  if ($payid > 0){
+    $target = "plm/payout/$payid";
+    drupal_goto($target);
+  }
+  //error_log("Target: $target");
   //drupal_set_message("target: $target");
-  $form_state['redirect'] = $target;
+  //$form_state['redirect'] = array('/',$target);
 }
 
 function theme_plm_payset($payset=NULL) {
   if (!$payset) return '';
+  $default_payid = variable_get('plm_default_payset', 0);
   $output .= '<div>';
   $output .= '<h3>Title</h3>';
-  $output .= $payset->title;
+  $output .= $default_payid == $payset->payid ? "<b>" . $payset->title . " (Default)</b>" : $payset->title;
   $output .= '</div>';
   $output .= '<div>';
   $output .= '<h3>Buy-in</h3>';
