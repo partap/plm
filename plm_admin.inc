@@ -535,7 +535,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#value' => $sid,
   );
   $form['gid'] = array(
-    '#type'          => 'value',
+    '#type'          => 'hidden',
     '#value' => $oldrec->gid,
   );
 
@@ -667,6 +667,17 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 5,
     '#default_value' => $oldrec->buyin+0,
   );
+
+  $form['pay_section']['bonus_points'] = array(
+    '#type'          => 'textfield',
+    '#title'         => 'Bonus Points',
+    '#required'      => TRUE,
+    '#size' => 5,
+    '#maxlength' => 5,
+    //'#description' => 'Bonus points awarded for playing this game',
+    '#default_value' => $oldrec ? $oldrec->bonus_points : $season->bonus_points,
+  );
+
   $announced = TRUE;
 
   if ($oldrec){
@@ -684,6 +695,13 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   );
 
   if ($oldrec->num_players){
+    $path = drupal_get_path('module', 'plm');
+    drupal_add_js("$path/js/jquery.jeditable.js");
+    drupal_add_js(array('plm' => array(
+          'modulePath' => $path,
+        )), 'setting');
+    drupal_add_js("$path/js/plm.js");
+        
     $results = _plm_get_results($oldrec->gid);
     $entrants = _plm_get_game_entrants($oldrec->gid);
 
@@ -747,6 +765,7 @@ function plm_game_form_submit($form, &$form_state) {
   $rec->num_players   = $form_state['values']['num_players'];
   $rec->pot_start     = $form_state['values']['pot_start'];
   $rec->buyin         = $form_state['values']['buyin'];
+  $rec->bonus_points  = $form_state['values']['bonus_points'];
   $rec->finished      = $form_state['values']['finished'];
   $rec->announced      = $form_state['values']['announced'];
   $rec->list_entrants = $form_state['values']['list_entrants'];

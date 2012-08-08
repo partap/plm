@@ -326,11 +326,11 @@ function _plm_get_game_by_title($title, $sid) {
 function _plm_insert_game($rec) {
   $res = db_query("INSERT INTO {plm_game} 
                    (title, sid, game_date, hid, num_players, pot_start, buyin, list_entrants,
-                    announced, finished, payid) 
+                    announced, finished, payid, bonus_points) 
                    VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
          $rec->title, $rec->sid,
          $rec->game_date, $rec->hid, $rec->num_players, 
-         $rec->pot_start, $rec->buyin, $rec->list_entrants, $rec->announced, $rec->finished, $rec->payid);
+         $rec->pot_start, $rec->buyin, $rec->list_entrants, $rec->announced, $rec->finished, $rec->payid, $rec->bonus_points);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_game}'), 'gid');
 }
@@ -339,12 +339,12 @@ function _plm_update_game($rec) {
                    SET title='%s', game_date=%d, 
                    sid=%d, hid=%d, num_players=%d,
                    pot_start=%d, buyin=%d, announced=%d, finished=%d, list_entrants=%d,
-                   payid=%d
+                   payid=%d, bonus_points=%d
                    WHERE gid=%d", 
     $rec->title, $rec->game_date, 
     $rec->sid, $rec->hid, $rec->num_players,
     $rec->pot_start, $rec->buyin, $rec->announced, $rec->finished, $rec->list_entrants,
-    $rec->payid,
+    $rec->payid, $rec->bonus_points,
     $rec->gid);
 }
 
@@ -413,8 +413,9 @@ function _plm_update_result($rec) {
 }
 
 function _plm_delete_result($gid, $place) {
-    $sql = "DELETE FROM {plm_result} where gid=%d AND $place=%d";
-    return db_query($sql, $gid,$place);
+    $sql = "DELETE FROM {plm_result} where gid=%d AND place=%d";
+    error_log("$sql ($gid, $place)");
+    return db_query($sql, $gid, $place);
 }
 
 function _plm_get_entrant($entid) {

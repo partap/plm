@@ -14,3 +14,63 @@ div.player-picture
     float: left;
     margin: 5px;
 }
+
+#game-results tr {
+    height: 32px;
+}
+
+#game-results td {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+#game-results .game-status {
+    padding: 4px;
+    margin: 2px;
+    text-shadow: rgba(0, 0, 0, 1) 0px 2px 4px;
+    background: #3a3;
+    color: #ffc;
+    border: 1px solid #333;
+    border-radius: 8px;
+}
+#game-results .btn-green {
+    background: #3a3;
+    color: #ffc;
+}
+#game-results .btn-green-faded {
+    background: #8a8;
+    color: #ffc;
+}
+
+#game-results .btn-red {
+    background: #a33;
+    color: #ff9;
+}
+
+#game-results .place {
+   margin: 2px;
+   padding: 5px;
+}
+
+#game-results .btn {
+    text-shadow: rgba(0, 0, 0, 1) 0px 2px 4px;
+    padding: 4px;
+    margin: 2px;
+    border: 1px solid #333;
+    border-radius: 8px;
+    cursor: pointer;
+}
+
+#game-results .btn-small {
+    font-size: 11px;
+
+}
+
+#game-results .placecol {
+    width: 150px;
+    white-space: nowrap;
+}
+
+table .maxfill {
+    width: 100%;
+}

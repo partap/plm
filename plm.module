@@ -54,6 +54,8 @@ function plm_init() {
     $stylesheet = drupal_get_path('module', 'plm') .'/plm.css';
   }
   drupal_add_css($stylesheet);
+  drupal_add_css(drupal_get_path('module', 'plm') . '/jquery.jgrowl.css');
+  drupal_add_js(drupal_get_path('module', 'plm') . '/js/jquery.jgrowl_minimized.js');
 }
 
 
@@ -62,16 +64,6 @@ function plm_init() {
 */
 function plm_menu() {
   $items = array();
-  //drupal_set_message('plm_menu() called');
-
-  // $items['plm'] = array(
-  //   'title' => 'Poker League (PLM)',
-  //   'page callback' => 'plm_main',
-  //   'access arguments' => array('access poker league content'),
-  //   'description' => t('Poker League Pages'),
-  //   'type' => MENU_NORMAL_ITEM,
-  //   'weight' => -100,
-  // );
   $items['plm/autocomplete/allplayers'] = array(
     'title' => 'player autocomplete',
     'page callback' => 'plm_player_autocomplete_all',
@@ -355,13 +347,29 @@ function plm_menu() {
     'access arguments' => array('access poker league member content'),
     'type' => MENU_NORMAL_ITEM,
   );
-  $items['plm/ajax'] = array(
-    'title' => 'Ajax Popup response URL',
-    'page callback' => 'plm_ajax',
-    'access arguments' => array('access poker league content'),
+  //$items['plm/ajax'] = array(
+  //  'title' => 'Ajax Popup response URL',
+  //  'page callback' => 'plm_ajax',
+  //  'access arguments' => array('access poker league content'),
+  //  'type' => 'MENU_CALLBACK',
+  //  'menu_name' => 'plm',
+  //);
+  $items['plm/ajax/game/player_done'] = array(
+    'title' => 'Ajax player finished game URL',
+    'page callback' => 'plm_ajax_playerdone',
+    'access arguments' => array('administer poker league'),
     'type' => 'MENU_CALLBACK',
     'menu_name' => 'plm',
   );
+  $items['plm/ajax/game/player_in'] = array(
+    'title' => 'Ajax player NOT finished game URL',
+    'page callback' => 'plm_ajax_player_in',
+    'access arguments' => array('administer poker league'),
+    'type' => 'MENU_CALLBACK',
+    'menu_name' => 'plm',
+  );
+
+
   // Admin Menu Items
   
   $items['admin/plm'] = array(
@@ -1381,31 +1389,128 @@ function _plm_result_new($game, $place, $points, $cash) {
   return $res;
 }
 
-function _plm_result_row($result) {
+function _plm_result_row($game, $result, $is_member, $is_admin) {
+  $player_in = '<span class="game-status">Playing</span>';
+  if ($is_admin){
+    $player_in .= ' <span id="pid-' .
+      $result->pid .
+      '" class="btn btn-red player-done">Done</span>';
+  }
+
+  if ($is_admin && $result->done && !$game->finished) {
+    $player_out = '<span id="pid-' . 
+      $result->pid .
+      '" class = "btn btn-green-faded btn-small player-in game-status">Not Done</span>' ;
+    //$player_out;
+  }
+  $place_label =  $result->done ?  
+    $player_out  . '<span class="place">' . _plm_format_place($result->place) . '</span>' : 
+    $player_in;
+  
   $row = array(
-    $result->done? _plm_format_place($result->place) : 'In Game',
+    array('data' => $place_label, 'class' => 'placecol'),
     l(t($result->name), 'plm/players/pid/' . $result->pid),
-    array('data' => $result->points, 'class' => 'numcol'),
+    $result->done ? array('data' => $result->points, 'class' => 'numcol') : '',
   );
   // Hide cash stats!
-  if (user_access('access poker league member content')) {
-    $row[] = array('data' => '$' . $result->cash, 'class' => 'numcol');
+  if ($is_member) {
+    $row[] = $result->done ? array('data' => '$' . $result->cash, 'class' => 'numcol') : '';
   }
   
   return $row;
 }
 
+
+
+function plm_ajax_playerdone() {
+  $gid = $_REQUEST['gid'];
+  $pid = $_REQUEST['pid'];
+ 
+  $game = _plm_get_game($gid);
+  $results = _plm_get_results($gid);
+  $entrants = _plm_get_game_entrants($gid);
+  $player = _plm_get_player($pid);
+  $payrules = _plm_get_payrules($game->payid, count($entrants));
+  $cash = array();
+  foreach ($payrules as $p) {
+    $cash[$p->place] = $p->amount;
+  }
+  $points = array(0, 10, 7, 5, 3, 1);
+
+  for ($place = 1 ; $place <= count($entrants) ; $place += 1) {
+    $points[$place] = isset($points[$place]) ? $points[$place] : 0;
+    if ($game->bonus_points) $points[$place] += $game->bonus_points;
+    $cash[$place] = isset($cash[$place])? $cash[$place] : 0;
+  }
+  for ($place = count($entrants) ; $place >= 1 ; $place -= 1) {
+    if (!$results[$place]) {
+      $r = _plm_result_new($game, $place, $points[$place], $cash[$place]);
+      $r->pid = $player->pid;
+      $r->name = $player->name;
+      $res = _plm_insert_result($r);
+      if ($res) {
+        $results[$place] = $r;
+      }
+      break;
+    }
+  }
+  $output = theme_plm_game_results($game, $results, $entrants);
+  echo $output;
+  exit;
+}
+
+function plm_ajax_player_in() {
+  $gid = $_REQUEST['gid'];
+  $pid = $_REQUEST['pid'];
+  $place = $_REQUEST['place'];
+
+  //error_log('back in game...place: ' . $place);
+  $game = _plm_get_game($gid);
+  $results = _plm_get_results($gid);
+  $entrants = _plm_get_game_entrants($gid);
+  $player = _plm_get_player($pid);
+  // $payrules = _plm_get_payrules($game->payid, count($entrants));
+  //$cash = array();
+  //foreach ($payrules as $p) {
+  //  $cash[$p->place] = $p->amount;
+  // }
+  //$points = array(0, 10, 7, 5, 3, 1);
+
+  //for ($place = 1 ; $place <= count($entrants) ; $place += 1) {
+  //  $points[$place] = isset($points[$place]) ? $points[$place] : 0;
+  //  if ($game->bonus_points) $points[$place] += $game->bonus_points;
+  //  $cash[$place] = isset($cash[$place])? $cash[$place] : 0;
+  // }
+  
+  // slide other results down
+  //error_log('deleting place: ' . $place);
+  _plm_delete_result($gid, $place);
+  for ($i = $place-1 ; $i >= 1 ; $i -= 1){
+    if ($results[$i]) {
+      $r = $results[$i];
+      $r->place += 1;
+      _plm_update_result($r);
+    }
+  }
+  //error_log('Player ' . $player->name . '('. $player->pid . ') back in!');
+  $results = _plm_get_results($gid);
+  $output = theme_plm_game_results($game, $results, $entrants);
+  echo $output;
+  exit;
+
+}
 function theme_plm_game_results($game, $results, $entrants) {
   $gid = $game->gid;
   $is_member = user_access('access poker league member content');
   $is_admin = user_access('administer poker league');
 
-  
   if (!$results && !$is_admin){
     return '<p>No Results Posted</p>';
   }
   $header = array(
-    'Place', 'Player', array('data' =>'Points', 'class' => 'numcol')
+    array('data' => 'Place', 'class' => 'placecol'), 
+    array('data' => 'Player', 'class' => 'maxfill'),
+    array('data' =>'Points', 'class' => 'numcol')
   );
   // Hide cash stats!
   if ($is_member) {
@@ -1414,7 +1519,7 @@ function theme_plm_game_results($game, $results, $entrants) {
   if ($is_admin){
     //$header[] = 'Operation';
     $header[] = '';
-    popups_add_popups();
+    //popups_add_popups();
   }
 
   $num_places = $game->num_players;
@@ -1425,7 +1530,11 @@ function theme_plm_game_results($game, $results, $entrants) {
 
   $expected_pot_total = $game->pot_start + $game->buyin * $game->num_players;
 
-  $display_results = $results;
+  //error_log('results: ');
+  //foreach ($results as $r) {
+  //  error_log($r->name . ': ' . $r->place);
+  // }
+  $di0splay_results = $results;
 
   if ($entrants){
     // Keep track of player places
@@ -1451,13 +1560,14 @@ function theme_plm_game_results($game, $results, $entrants) {
     while ($results[$place]) {$place++;}
     foreach ($entrants as $e) {
       if (!$entrant_places[$e->pid]) {
+        //error_log('placing ' . $e->name);
         $entrant_places[$e->pid] = $place;
         $p = isset($points[$place])? $points[$place] : 0;
         if ($game->bonus_points) $p += $game->bonus_points;
 
         $c = isset($cash[$place])? $cash[$place] : 0;
         $display_results[$place] = _plm_result_new($game, $place, $p, $c);
-        error_log("Setting place: $place, points: $p, cash: $c");
+        //error_log("Setting place: $place, points: $p, cash: $c");
         $display_results[$place]->pid = $e->pid;
         $display_results[$place]->name = $e->name;
         $display_results[$place]->done = FALSE;
@@ -1469,8 +1579,9 @@ function theme_plm_game_results($game, $results, $entrants) {
   } 
 
   
-  
+  $rows = array();
   // Format results in table
+  //error_log('num_places: ' . $num_places);
   for ($place=1;$place<=$num_places;$place++){
     $r = $display_results[$place];
     // display blank result for admin if not set
@@ -1482,9 +1593,9 @@ function theme_plm_game_results($game, $results, $entrants) {
         $r = _plm_result_new($game, $place);
       }
     }
-    $row = _plm_result_row($r);
+    $row = _plm_result_row($game, $r, $is_member, $is_admin);
     if ($is_admin){
-      if ($game->finished) 
+      if ($game->finished || !$r->done) 
         $row[] = '';
       else{
         $row[] = l(t('edit'), 
@@ -1496,7 +1607,7 @@ function theme_plm_game_results($game, $results, $entrants) {
     $rows[] = $row;
     $total += $r->cash;
   }
-  popups_add_popups(array('.popups-form' => array('noMessage' => true)));
+  //popups_add_popups(array('.popups-form' => array('noMessage' => true)));
   $rem = $expected_pot_total - $total;
 
   // make sure the payouts add up,
@@ -1521,16 +1632,24 @@ function theme_plm_game_results($game, $results, $entrants) {
     }
   }
   
-  //$output .= "<div><b>Total Pot:</b> \$$expected_pot_total</div>";
-//   if ($game->finished) {
-//     $caption = t('Final Results');
-//   }
-//   else {
-//     $caption = t('Tentative Results');
-//   }
-  $output .= theme('table', $header, $rows, NULL, $caption);
+  $attr = array(
+    'id' => 'game-results',
+    'class' => 'game-results',
+  );
+  
+  //error_log('is_member: ' . $is_member);
+  //error_log('is_admin: ' . $is_admin);
+  //error_log('entrants: ' . count($entrants));
+  //error_log('display_results: ' . count($display_results));
+  //error_log('rows: ' . count($rows));
+
+  //error_log(print_r($rows, 1));
+  $output .= theme_table($header, $rows, $attr, $caption);
+  //error_log($output);
   return $output;
 }
+
+
 
 
 function plm_block($op = 'list', $delta = 0, $edit = array()) {
@@ -1793,6 +1912,7 @@ function theme_plm_results_block($s=NULL, $game=NULL) {
   $output .= theme("table", NULL, $rows, $attr);
   return $output;
 }
+
 
 function theme_plm_nav_menu() {
 
