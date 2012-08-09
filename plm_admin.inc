@@ -165,9 +165,28 @@ function plm_season_form(&$form_state, $rec = NULL) {
   $form['list_entrants'] = array(
     '#type' => 'checkbox',
     '#title' => t('List all game entrants'),
-    '#default_value' => $rec->list_entrants,
+    '#default_value' => $rec ? $rec->list_entrants : variable_get('plm_list_entrants', 1),
     '#description' => 'If enabled, list all entrants for every game, rather than just the players who win points or cash',
     '#required' => TRUE,
+  );
+  $bonus_points = $rec ? $rec->bonus_points : 0;
+  //drupal_set_message("Bonus points: $bonus_points");
+  drupal_set_message("<pre>" . print_r($rec, 1) . "</pre>");
+  $form['bonus_points'] = array(
+    '#type' => 'textfield',
+    '#default_value' => $bonus_points,
+    '#title' => t("Bonus Points"),
+    '#description' => "Bonus points to be awarded for each game, in addition to placing points",
+    '#size' => 5,
+  );
+
+  $form['num_games'] = array( 
+    '#type' => 'textfield',
+    '#title' => t('Number of Games'),
+    '#default_value' => variable_get('plm_default_season_length', 26),
+    '#size' => 3,
+    '#maxlength' => 5,
+    '#description' => t("Total number of games planned for this season (used to calculate EOS points)."),
   );
 
   // Generate blank schedule for a new season
@@ -242,6 +261,12 @@ function plm_season_form_validate($form, &$form_state) {
                    t('Schedule must be 1 to 52 weeks long.'));
   }
 
+  $season_length = $form_state['values']['num_games'];
+  if (strlen($season_length) > 0 && !is_numeric($season_length)) {
+    form_set_error('num_weeks', 
+                   t('Number of games must be numeric.'));
+  }
+
 }
 
 function plm_season_form_submit($form, &$form_state) {
@@ -254,7 +279,12 @@ function plm_season_form_submit($form, &$form_state) {
   if ($endstr)
     $season->end_date = strtotime($endstr);
   $season->list_entrants = $form_state['values']['list_entrants'];
-  drupal_set_message("List entrants: $list_entrants");
+  $season->bonus_points = $form_state['values']['bonus_points'];
+  $season->num_games = $form_state['values']['num_games'];
+
+  //drupal_set_message('setting bonus_points to: ' . $season->bonus_points);
+  //drupal_set_message("Form State:<pre>" . print_r($form_state, 1) . "</pre>");
+  //drupal_set_message("List entrants: $list_entrants");
   if ($sid) $res = _plm_update_season($season);
   else $res = _plm_insert_season($season);
 
@@ -262,7 +292,10 @@ function plm_season_form_submit($form, &$form_state) {
     drupal_set_message(
       t("Saved <i>@title</i>.", array('@title' => $season->title)));
   }
-  else return;
+  else {
+    drupal_set_message("There was a problem saving the record: " . db_error(), 'error');
+    return;
+  }
   if (!$sid) $sid = $res;
   $form_state['redirect'] = "plm/seasons/$sid";
 
@@ -1278,6 +1311,7 @@ function theme_plm_entrants_form($form) {
   $is_admin = user_access('administer poker league');
   
 
+  $output .= drupal_render($form['season']);
   $output .= drupal_render($form['new_player']);
   $game_date = $form['_game_date']['#value'];
 
@@ -1337,7 +1371,7 @@ function theme_plm_entrants_form($form) {
       }
     }
     $attr = array('id' => 'plm-available-list');
-    $output .= '<div class="tbl-wrapper halfcol rightcol">';
+    $output .= '<div class="tbl-wrapper halfcol rightcol scrollbox-y">';
     $caption = 'Available Players:';
     $output .= theme('table', $headers, $rows, $attr, $caption);
     $output .= '</div>';

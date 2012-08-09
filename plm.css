@@ -1,3 +1,17 @@
+tr.plm-final.last, tr.finalist.last{
+    border-bottom: 1px solid #888;
+}
+.newpoints{
+    color: #077;
+}
+.neg {
+    color: #800;
+}
+
+.pos {
+    color: #080;
+}
+
 .current
 {
     font-weight: bold;
@@ -15,16 +29,16 @@ div.player-picture
     margin: 5px;
 }
 
-#game-results tr {
+#content-area table tr {
     height: 32px;
 }
 
-#game-results td {
-    font-weight: bold;
+#content-area table td {
+    /*font-weight: bold;*/
     font-size: 14px;
 }
 
-#game-results .game-status {
+#content-area table .game-status {
     padding: 4px;
     margin: 2px;
     text-shadow: rgba(0, 0, 0, 1) 0px 2px 4px;
@@ -33,26 +47,26 @@ div.player-picture
     border: 1px solid #333;
     border-radius: 8px;
 }
-#game-results .btn-green {
+#content-area table .btn-green {
     background: #3a3;
     color: #ffc;
 }
-#game-results .btn-green-faded {
+#content-area table .btn-green-faded {
     background: #8a8;
     color: #ffc;
 }
 
-#game-results .btn-red {
+#content-area table .btn-red {
     background: #a33;
     color: #ff9;
 }
 
-#game-results .place {
+#content-area table .place {
    margin: 2px;
    padding: 5px;
 }
 
-#game-results .btn {
+#content-area table .btn {
     text-shadow: rgba(0, 0, 0, 1) 0px 2px 4px;
     padding: 4px;
     margin: 2px;
@@ -61,16 +75,142 @@ div.player-picture
     cursor: pointer;
 }
 
-#game-results .btn-small {
+#content-area table .btn-small {
     font-size: 11px;
 
 }
 
-#game-results .placecol {
+#content-area table .placecol {
     width: 150px;
     white-space: nowrap;
 }
 
-table .maxfill {
+#content-area table .maxfill {
     width: 100%;
 }
+
+#plm-entrants-form table {
+    width: 300px;
+}
+
+
+#plm-entrant-form
+{
+    width: auto;
+    display: inline-block;
+    border: 1px solid #666;
+}
+
+#plm-entrants-list
+{
+    width: auto;
+    display: inline-table;
+    vertical-align: top;
+}
+
+#plm-available-list {
+
+}
+#plm-available-list thead th,
+#plm-available-list tbody td
+{
+}
+
+.not-avail {
+    display: none;
+}
+.tbl-wrapper
+{
+    display: inline-block;
+    vertical-align: top;
+    /*width: auto;*/
+    min-height: 500px;
+    padding: 1em;
+    border: 1px solid #E0DCDC;
+    
+}
+
+.layout-box
+{
+    position: relative;
+}
+.leftcol
+{
+    position: relative;
+    left:0;
+}
+.rightcol
+{
+    position: absolute;
+    right: 0;
+    width: 50%;
+}
+.scrollbox
+{
+    overflow:auto;
+    height: 100%;
+    width: auto;
+}
+.scrollbox-y
+{
+    overflow-y:scroll;
+    top: 0;
+    bottom: 0;
+    width: auto;
+}
+
+table.layout-table
+{
+    border: none;
+}
+#plm-entrants-form table 
+{
+    white-space:nowrap;
+}
+
+#plm-entrants-form {
+    
+}
+
+#plm-entrants-form fieldset.form-column
+{
+    vertical-align: top;
+    display: inline-block;
+    border: none;
+}
+
+#plm-entrants-form caption 
+{
+    font-weight: bold;
+    white-space: nowrap;
+}
+
+div.node-inner h2.title
+{
+    margin: 2em .2em .4em;
+}
+
+#content-area {
+    /*overflow: auto;*/
+    padding: 5px;
+}
+
+#plm-game-form .form-item {
+    display: inline-block;
+    margin: 1em 1em;
+}
+
+.halfcol{
+/*    width: auto;*/
+}
+
+.member 
+{
+    font-weight: bold;
+}
+
+.wrappable 
+{
+    white-space:normal;
+}
+

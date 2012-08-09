@@ -1326,7 +1326,7 @@ function theme_plm_game_details($game, $season=NULL) {
     }
   }
   $output .= '</div>';
-  if ($game->finished){
+  if ($game->list_entrants){
     $output .= '<div id="game-results" class="details">';
     $output .= '<h3>Results</h3>';
     $results = _plm_get_results($game->gid);
@@ -1334,13 +1334,13 @@ function theme_plm_game_details($game, $season=NULL) {
     $output .= '</div>';
   }
 
-  if ($game->list_entrants) {
-    $output .= '<div id="entrant-list" class="details">';
-    $output .= '<h3>Entrants</h3>';
-    $entrants = _plm_get_game_entrants($game->gid);
-    $output .= theme('plm_game_entrants', $game, $entrants);
-    $output .= '</div>';
-  }
+  // if ($game->list_entrants) {
+  //   $output .= '<div id="entrant-list" class="details">';
+  //   $output .= '<h3>Entrants</h3>';
+  //   $entrants = _plm_get_game_entrants($game->gid);
+  //   $output .= theme('plm_game_entrants', $game, $entrants);
+  //   $output .= '</div>';
+  // }
   return $output;
 }
 function theme_plm_game_date($game) {
@@ -1402,7 +1402,9 @@ function _plm_result_row($game, $result, $is_member, $is_admin) {
       $result->pid .
       '" class = "btn btn-green-faded btn-small player-in game-status">Not Done</span>' ;
     //$player_out;
-  }
+  } else{ $player_out = '';}
+  //error_log('result: name=' . $result->name . ', place=' . $result->place . ', done=' . $result->done);
+
   $place_label =  $result->done ?  
     $player_out  . '<span class="place">' . _plm_format_place($result->place) . '</span>' : 
     $player_in;
@@ -1488,8 +1490,14 @@ function plm_ajax_player_in() {
   for ($i = $place-1 ; $i >= 1 ; $i -= 1){
     if ($results[$i]) {
       $r = $results[$i];
-      $r->place += 1;
-      _plm_update_result($r);
+      $new = $results[$i+1];
+      if ($new) {
+        //error_log("moving " . $r->name . " from $old_place to " . ($r->place));
+        $new->pid = $r->pid;
+        _plm_delete_result($gid, $i);        
+        _plm_insert_result($new);
+      }
+      error_log(db_error());
     }
   }
   //error_log('Player ' . $player->name . '('. $player->pid . ') back in!');
@@ -1499,7 +1507,7 @@ function plm_ajax_player_in() {
   exit;
 
 }
-function theme_plm_game_results($game, $results, $entrants) {
+function theme_plm_game_results($game, $results) {
   $gid = $game->gid;
   $is_member = user_access('access poker league member content');
   $is_admin = user_access('administer poker league');
@@ -1523,7 +1531,10 @@ function theme_plm_game_results($game, $results, $entrants) {
   }
 
   $num_places = $game->num_players;
-
+  if (!$entrants){
+    $entrants = _plm_get_game_entrants($gid);
+  }
+  
   if ($game->finished) $num_places = count($results);
   // Add up total prizepool
   $total = 0;
@@ -1534,7 +1545,7 @@ function theme_plm_game_results($game, $results, $entrants) {
   //foreach ($results as $r) {
   //  error_log($r->name . ': ' . $r->place);
   // }
-  $di0splay_results = $results;
+  $display_results = $results;
 
   if ($entrants){
     // Keep track of player places
@@ -1546,6 +1557,7 @@ function theme_plm_game_results($game, $results, $entrants) {
       $entrant_places[$r->pid] = $r->place;
       $display_results[$r->place] = $r;
       $display_results[$r->place]->done = TRUE;
+      //error_log('results[' . $r->place . ']: ' . $display_results[$r->place]->done);
     }
 
     $payrules = _plm_get_payrules($game->payid, count($entrants));
@@ -2033,29 +2045,6 @@ function plm_player_autocomplete($gid = 0, $string='') {
   return drupal_json($matches);
 }
 
-// function plm_season_select($form_id='plm_season_sel', $sid=0, $path=''){
-//   $form['season_sel'] = array(
-//     '#type' => 'select',
-//     '#title' => t('Current Season'),
-//     '#description' => 'Season currently underway.  Used for Schedule and Leaderboard.',
-//     '#default_value' => $sid,
-//     '#options' => array(
-//       0 => t('None'),
-//     ),
-//   );
-//   $seasons = _plm_get_seasons();
-//   if (isset($seasons)) {
-//     foreach ($seasons as $s) {
-//       $form['season_sel']['#options'][$s->sid] = $s->title;
-//     }
-//   }
-//   $form['submit'] = array('#type' => 'submit', '#value' => t('Go'));
-//   $form['#action'] = url('search/node');
-//   return $form;
-// }
-// function plm_season_select_form($form_id = 'plm_season_sel') {
-//   return drupal_get_form($form_id);
-// }
 
 
 // implementation of hook_user

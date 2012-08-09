@@ -193,18 +193,23 @@ function _plm_get_players_autocomplete($string, $gid) {
 
 
 function _plm_insert_season($season) {
-  $res =  db_query("INSERT INTO {plm_season} (title, start_date, end_date, list_entrants) 
-                    VALUES ('%s', %d, %d, %d)", 
-          $season->title, $season->start_date, $season->end_date, $season->list_entrants);
+  $res =  db_query("INSERT INTO {plm_season} (title, start_date, end_date, list_entrants, 
+                      bonus_points, num_games) 
+                    VALUES ('%s', %d, %d, %d, %d)", 
+          $season->title, $season->start_date, $season->end_date, $season->list_entrants, 
+          $season->bonus_points, $season->num_games);
   if (!$res) return $res;
   return db_last_insert_id(db_prefix_tables('{plm_season}'), 'sid');
   
 }
 function _plm_update_season($season) {
+  //drupal_set_message("Updating Season: <pre>" . print_r($season,1) . "</pre>");
   return db_query("UPDATE {plm_season} 
-                   SET title='%s', start_date=%d, end_date=%d, list_entrants=%d 
+                   SET title='%s', start_date=%d, end_date=%d, list_entrants=%d, 
+                     bonus_points=%d, num_games=%d
                    WHERE sid = %d", 
-    $season->title, $season->start_date, $season->end_date, $season->list_entrants, $season->sid);
+    $season->title, $season->start_date, $season->end_date, $season->list_entrants, 
+    $season->bonus_points, $season->num_games, $season->sid);
 }
 function _plm_delete_season($sid) {
   // Delete games, results from the season too..
