@@ -1553,17 +1553,21 @@ function theme_plm_game_results($game, $results) {
     $display_results = array();
 
     // insert known results
-    foreach ($results as $i => $r) {
-      $entrant_places[$r->pid] = $r->place;
-      $display_results[$r->place] = $r;
-      $display_results[$r->place]->done = TRUE;
-      //error_log('results[' . $r->place . ']: ' . $display_results[$r->place]->done);
+    if ($results){
+      foreach ($results as $i => $r) {
+        $entrant_places[$r->pid] = $r->place;
+        $display_results[$r->place] = $r;
+        $display_results[$r->place]->done = TRUE;
+        //error_log('results[' . $r->place . ']: ' . $display_results[$r->place]->done);
+      }
     }
-
+    
     $payrules = _plm_get_payrules($game->payid, count($entrants));
     $cash = array();
-    foreach ($payrules as $p) {
-      $cash[$p->place] = $p->amount;
+    if ($payrules){
+      foreach ($payrules as $p) {
+        $cash[$p->place] = $p->amount;
+      }
     }
     
     $points = array(0, 10, 7, 5, 3, 1);
