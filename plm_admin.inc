@@ -557,7 +557,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     
     $oldrec->buyin = _plm_rules_default_buyin($season->sid);
     $oldrec->bonus_points = $season->bonus_points;
-    $oldrec->title = $prefix . ' ' . (_plm_get_num_games($sid)+1);
+    $oldrec->title = $prefix . ' ' . (_plm_get_num_games($season->sid)+1);
     $oldrec->list_entrants = $season->list_entrants;
     $oldrec->payid = variable_get('plm_default_payset', 0);
   }
