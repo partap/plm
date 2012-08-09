@@ -171,7 +171,7 @@ function plm_season_form(&$form_state, $rec = NULL) {
   );
   $bonus_points = $rec ? $rec->bonus_points : 0;
   //drupal_set_message("Bonus points: $bonus_points");
-  drupal_set_message("<pre>" . print_r($rec, 1) . "</pre>");
+  //drupal_set_message("<pre>" . print_r($rec, 1) . "</pre>");
   $form['bonus_points'] = array(
     '#type' => 'textfield',
     '#default_value' => $bonus_points,
@@ -553,8 +553,16 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   }
   else {
     drupal_set_title("New Game");
+    $prefix = variable_get('plm_default_prefix', 'Game');
+    
     $oldrec->buyin = _plm_rules_default_buyin($season->sid);
+    $oldrec->bonus_points = $season->bonus_points;
+    $oldrec->title = $prefix . ' ' . (_plm_get_num_games($sid)+1);
+    $oldrec->list_entrants = $season->list_entrants;
+    $oldrec->payid = variable_get('plm_default_payset', 0);
   }
+  
+
   $season_title = $season->title;
   $sid = $season->sid;
   $form['season'] = array(
@@ -572,10 +580,6 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#value' => $oldrec->gid,
   );
 
-  if (!$oldrec->title) {
-    $prefix = variable_get('plm_default_prefix', 'Game');
-    $oldrec->title = $prefix . ' ' . (_plm_get_num_games($sid)+1);
-  }
   $form['id_section'] = array(
     '#type' => 'fieldset',
   );
@@ -624,11 +628,6 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
   );
   
 
-  if ($oldrec->gid) 
-    $list_entrants = $oldrec->list_entrants;
-  else 
-    // Use season default
-    $list_entrants = $season->list_entrants;
 
   $form['player_section'] = array('#type' => 'fieldset');
 
@@ -636,7 +635,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#type'          => 'checkbox',
     '#title'         => 'Record All Entrants',
     '#required'      => TRUE,
-    '#default_value' => $list_entrants,
+    '#default_value' => $oldrec->list_entrants,
   );
 
   if ($oldrec->gid){
@@ -675,8 +674,6 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     }
     //$output .= theme('item_list', $list, 'Payouts');
   }
-  if (!$oldrec->gid && !$oldrec->payid)
-    $oldrec->payid = variable_get('plm_default_payset', 0);
   $form['pay_section']['payset_sel'] = array(
     '#type' => 'select',
     '#title' => 'Payout Structure',
@@ -700,7 +697,8 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#maxlength' => 5,
     '#default_value' => $oldrec->buyin+0,
   );
-
+  //drupal_set_message('<pre>' . print_r($oldrec, 1) . '</pre>');
+  //drupal_set_message('<pre>' . print_r($season, 1) . '</pre>');
   $form['pay_section']['bonus_points'] = array(
     '#type'          => 'textfield',
     '#title'         => 'Bonus Points',
@@ -708,7 +706,7 @@ function plm_game_form(&$form_state, $oldrec=NULL, $season=NULL) {
     '#size' => 5,
     '#maxlength' => 5,
     //'#description' => 'Bonus points awarded for playing this game',
-    '#default_value' => $oldrec ? $oldrec->bonus_points : $season->bonus_points,
+    '#default_value' => $oldrec->bonus_points+0,
   );
 
   $announced = TRUE;
@@ -825,6 +823,9 @@ function plm_game_form_submit($form, &$form_state) {
       $form_state['redirect'] = "plm/games/$rec->gid/edit";
     else 
       $form_state['redirect'] = "plm/games/$res/edit";
+  }
+  else {
+    drupal_set_message('There was a problem saving the record!', 'error');
   }
 }
 

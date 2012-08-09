@@ -195,7 +195,7 @@ function _plm_get_players_autocomplete($string, $gid) {
 function _plm_insert_season($season) {
   $res =  db_query("INSERT INTO {plm_season} (title, start_date, end_date, list_entrants, 
                       bonus_points, num_games) 
-                    VALUES ('%s', %d, %d, %d, %d)", 
+                    VALUES ('%s', %d, %d, %d, %d, %d)", 
           $season->title, $season->start_date, $season->end_date, $season->list_entrants, 
           $season->bonus_points, $season->num_games);
   if (!$res) return $res;
@@ -332,7 +332,7 @@ function _plm_insert_game($rec) {
   $res = db_query("INSERT INTO {plm_game} 
                    (title, sid, game_date, hid, num_players, pot_start, buyin, list_entrants,
                     announced, finished, payid, bonus_points) 
-                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
+                   VALUES ('%s', %d, %d, %d, %d, %d, %d, %d, %d, %d, %d, %d)", 
          $rec->title, $rec->sid,
          $rec->game_date, $rec->hid, $rec->num_players, 
          $rec->pot_start, $rec->buyin, $rec->list_entrants, $rec->announced, $rec->finished, $rec->payid, $rec->bonus_points);

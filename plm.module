@@ -97,7 +97,7 @@ function plm_menu() {
   $items['plm/seasons/new'] = array(
     'title' => t('New Season'),
     'page callback' => 'drupal_get_form',
-    'page arguments' => array('plm_season_form', 'new'),
+    'page arguments' => array('plm_season_form'),
     'access arguments' => array('administer poker league'),
     'type' => MENU_LOCAL_TASK,
     'file' => 'plm_admin.inc',
