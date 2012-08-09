@@ -103,13 +103,15 @@ function _plm_rules_default_payout($game, $place) {
 
 function _plm_get_est_cutoff_points($plm_season, $tenth) {
   $num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
-  $num_games_total    = _plm_get_num_games($plm_season->sid);
+  //$num_games_total    = _plm_get_num_games($plm_season->sid);
+  $num_games_total    = $plm_season->num_games;
+  
   return round($tenth*$num_games_total/$num_games_finished);
 }
 
 function _plm_get_eoy_est($plm_season, $eoy_total) {
   $num_games_finished = _plm_get_num_games($plm_season->sid, "finished != 0");
-  $num_games_total    = _plm_get_num_games($plm_season->sid);
+  $num_games_total    = $plm_season->num_games;
   return round($eoy_total*$num_games_total/$num_games_finished);
 }
 
