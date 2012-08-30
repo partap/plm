@@ -46,8 +46,6 @@ function plm_schema() {
         'not null' => TRUE,
         'default' => 0,
       ),
-    );
-
     ),
     'primary key' => array('sid'),
     'unique keys' => array(
