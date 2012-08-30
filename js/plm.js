@@ -1,4 +1,7 @@
 $(document).ready(
+  /*simple initialization*/
+  //$("#cke_contents_edit-body > iframe").webkitimageresize().webkittableresize().webkittdresize();
+
     function() {
 
         $('#payouts td.edit').editable(Drupal.settings.basePath+'admin/plm/ajax/payout/save', {
